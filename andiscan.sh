@@ -1,144 +1,184 @@
 #!/bin/bash
 
 # ==============================================
-# ULTIMATE ANDROID SECURITY AUDIT SCRIPT (v5.0)
-# Combines extended checks from final.sh and CLI polish from improved version
+# ULTIMATE ANDROID SECURITY AUDIT SCRIPT 
 # ==============================================
 
-# Output file and counters
-output_file="android_security_audit_$(date +%Y%m%d_%H%M%S).txt"
+timestamp=$(date +%Y%m%d_%H%M%S)
+txt_dir="android_audit_output/txt_report_$timestamp"
+html_dir="android_audit_output/html_report_$timestamp"
+mkdir -p "$txt_dir" "$html_dir"
+
+txt_file="$txt_dir/audit_report.txt"
+html_file="$html_dir/audit_report.html"
+
 critical_count=0
 warning_count=0
 safe_count=0
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-BOLD=$(tput bold)
-NORMAL=$(tput sgr0)
+# HTML header
+echo "<html>
+<head>
+  <title>Android Security Audit Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    h1, h2, h3 { color: #333; }
+    .box { border-radius: 5px; padding: 15px; margin: 10px 0; }
+    .safe { background-color: #e0f7e9; border-left: 6px solid #2e7d32; }
+    .warning { background-color: #fff8e1; border-left: 6px solid #f9a825; }
+    .critical { background-color: #ffebee; border-left: 6px solid #c62828; }
+    .info { background-color: #e3f2fd; border-left: 6px solid #1565c0; }
+    pre { background: #eee; padding: 10px; overflow-x: auto; }
+  </style>
+</head>
+<body>" > "$html_file"
+echo "<h1>ANDROID SECURITY AUDIT REPORT</h1>" >> "$html_file"
+echo "<p>Generated: $(date '+%Y-%m-%d %H:%M:%S')</p>" >> "$html_file"
 
 # ADB Check
 if ! adb get-state 1>/dev/null 2>&1; then
-    echo -e "${RED}[X] No device detected via ADB${NC}"
+    echo "[X] No device detected via ADB"
     exit 1
 fi
 
-# Init
-echo -e "${CYAN}=== ANDROID SECURITY AUDIT REPORT ===${NC}" > "$output_file"
-echo -e "Generated: $(date '+%Y-%m-%d %H:%M:%S')" >> "$output_file"
-echo -e "Device: $(adb shell getprop ro.product.model)" >> "$output_file"
-echo -e "========================================\n" >> "$output_file"
+# Device Info
+model=$(adb shell getprop ro.product.model | tr -d '\r')
+brand=$(adb shell getprop ro.product.brand | tr -d '\r')
+manufacturer=$(adb shell getprop ro.product.manufacturer | tr -d '\r')
+name=$(adb shell getprop ro.product.name | tr -d '\r')
+soc_manufacturer=$(adb shell getprop ro.soc.manufacturer | tr -d '\r')
+soc_model=$(adb shell getprop ro.soc.model | tr -d '\r')
 
-echo -e "\n${BLUE}${BOLD}[*] DEVICE INFORMATION${NC}${NORMAL}"
-adb shell getprop | grep -E 'ro.product.(brand|manufacturer|model|name)' >> "$output_file"
+echo -e "Device: $model\nBrand: $brand\nManufacturer: $manufacturer\nName: $name\nSoC Manufacturer: $soc_manufacturer\nSoC Model: $soc_model" >> "$txt_file"
 
+echo "<h2>Device Information</h2>" >> "$html_file"
+echo "<ul>" >> "$html_file"
+echo "<li><strong>Model:</strong> $model</li>" >> "$html_file"
+echo "<li><strong>Brand:</strong> $brand</li>" >> "$html_file"
+echo "<li><strong>Manufacturer:</strong> $manufacturer</li>" >> "$html_file"
+echo "<li><strong>Device Name:</strong> $name</li>" >> "$html_file"
+echo "<li><strong>SoC Manufacturer:</strong> $soc_manufacturer</li>" >> "$html_file"
+echo "<li><strong>SoC Model:</strong> $soc_model</li>" >> "$html_file"
+echo "</ul>" >> "$html_file"
 
 
 # Function to evaluate checks
 evaluate_check() {
-  local label="$1"
-  local command="$2"
-  local safe_pattern="$3"
-  local level="$4"
-  local desc="$5"
+  local category="$1"
+  local label="$2"
+  local command="$3"
+  local safe_pattern="$4"
+  local level="$5"
+  local desc="$6"
 
   result=$(adb shell "$command" 2>/dev/null | tr -d '\r' || echo "[Not Supported]")
-  echo -e "[+] $label:" >> "$output_file"
-  echo -e "Description: $desc" >> "$output_file"
-  echo -e "Command: $command" >> "$output_file"
-  echo -e "Result: $result\n" >> "$output_file"
+
+  echo -e "[$category] $label" >> "$txt_file"
+  echo -e "Command: $command" >> "$txt_file"
+  echo -e "Description: $desc" >> "$txt_file"
+  echo -e "Result: $result" >> "$txt_file"
+
+  echo "<h3>$category - $label</h3>" >> "$html_file"
+  echo "<p><strong>Command:</strong> $command<br>" >> "$html_file"
+  echo "<strong>Description:</strong> $desc<br>" >> "$html_file"
+
+  if [[ "$label" == "Open Ports" ]]; then
+    echo "<strong>Result:</strong><br><pre>$result</pre>" >> "$html_file"
+  else
+    echo "<strong>Result:</strong> $result<br>" >> "$html_file"
+  fi
 
   if [[ "$result" =~ $safe_pattern ]]; then
-    echo -e "[*] $label: $result -> ${GREEN}SAFE${NC}"
+    echo -e "Status: SAFE\n" >> "$txt_file"
+    echo "<div class='box safe'><strong>Status:</strong> SAFE</div>" >> "$html_file"
     ((safe_count++))
   else
     case "$level" in
-      "critical") echo -e "[*] $label: $result -> ${RED}CRITICAL${NC}"; ((critical_count++)) ;;
-      "warning") echo -e "[*] $label: $result -> ${YELLOW}WARNING${NC}"; ((warning_count++)) ;;
-      *) echo -e "[*] $label: $result -> ${NC}INFO${NC}" ;;
+      "critical")
+        echo -e "Status: CRITICAL\n" >> "$txt_file"
+        echo "<div class='box critical'><strong>Status:</strong> CRITICAL</div>" >> "$html_file"
+        ((critical_count++))
+        ;;
+      "warning")
+        echo -e "Status: WARNING\n" >> "$txt_file"
+        echo "<div class='box warning'><strong>Status:</strong> WARNING</div>" >> "$html_file"
+        ((warning_count++))
+        ;;
+      *)
+        echo -e "Status: INFO\n" >> "$txt_file"
+        echo "<div class='box info'><strong>Status:</strong> INFO</div>" >> "$html_file"
+        ;;
     esac
   fi
 }
 
-# --- USER & PRIVACY ---
-echo -e "\n${BLUE}${BOLD}[*] USER & PRIVACY${NC}${NORMAL}"
-evaluate_check "Screen Lock" "dumpsys keyguard | grep 'secure=true'" "secure=true" "critical" "Screen lock must be enabled"
-evaluate_check "Clipboard Access" "cmd clipboard get-primary-clip" "^$" "safe" "Check if clipboard has sensitive data"
-evaluate_check "Location Services" "settings get secure location_mode" "3" "safe" "Mode 3 means high-accuracy enabled"
+# === SECURITY CHECKS ===
 
-# --- BOOT & SECURITY ---
-echo -e "\n${BLUE}${BOLD}[*] BOOT & SECURITY${NC}${NORMAL}"
-evaluate_check "Verified Boot State" "getprop ro.boot.verifiedbootstate" "green" "critical" "Should be green for locked bootloader"
-evaluate_check "Encryption" "getprop ro.crypto.state" "encrypted" "critical" "Storage should be encrypted"
-evaluate_check "SELinux" "getenforce" "Enforcing" "warning" "SELinux should be enforcing"
-evaluate_check "OEM Unlock Allowed" "getprop sys.oem_unlock_allowed" "0" "critical" "Should be disabled to prevent unlock"
-evaluate_check "USB Debugging" "settings get global adb_enabled" "0" "warning" "Disable unless needed"
-evaluate_check "Unknown Sources" "settings get secure install_non_market_apps" "0" "warning" "Should be disabled"
-evaluate_check "Device Debuggable" "getprop ro.debuggable" "0" "critical" "Production devices must not be debuggable"
-evaluate_check "Safe Mode" "getprop persist.sys.safemode" "0" "info" "Should not be running in Safe Mode"
-evaluate_check "FRP Policy" "settings get global frp_policy" "1" "critical" "Factory Reset Protection should be enabled"
-evaluate_check "ADB Over Wi-Fi" "settings get global adb_wifi_enabled" "0" "warning" "Risky if enabled"
+# USER & PRIVACY
+evaluate_check "USER & PRIVACY" "Screen Lock" "dumpsys keyguard | grep 'secure=true'" "secure=true" "critical" "Screen lock must be enabled"
+evaluate_check "USER & PRIVACY" "Clipboard Access" "cmd clipboard get-primary-clip" "^$" "safe" "Check if clipboard has sensitive data"
+evaluate_check "USER & PRIVACY" "Location Services" "settings get secure location_mode" "3" "safe" "Mode 3 means high-accuracy enabled"
 
-# --- APPS & RUNTIME ---
-echo -e "\n${BLUE}${BOLD}[*] APPS & RUNTIME${NC}${NORMAL}"
-evaluate_check "Root Access (su)" "which su" "^$" "critical" "Check for root binaries"
-evaluate_check "Debuggable Apps" "pm list packages -d | wc -l" "0" "warning" "Debuggable apps should be 0"
-evaluate_check "Accessibility Services" "settings get secure enabled_accessibility_services" "^$" "warning" "Keylogging/clickjacking risk"
-evaluate_check "Device Admin Apps" "dumpsys device_policy | grep 'Admin:' | wc -l" "0" "warning" "Admins may have control"
-evaluate_check "Running Services Count" "dumpsys activity services | grep -E 'package|process' | wc -l" ".*" "info" "Running services on device"
+# BOOT & SECURITY
+evaluate_check "BOOT & SECURITY" "Verified Boot State" "getprop ro.boot.verifiedbootstate" "green" "critical" "Should be green for locked bootloader"
+evaluate_check "BOOT & SECURITY" "Encryption" "getprop ro.crypto.state" "encrypted" "critical" "Storage should be encrypted"
+evaluate_check "BOOT & SECURITY" "SELinux" "getenforce" "Enforcing" "warning" "SELinux should be enforcing"
+evaluate_check "BOOT & SECURITY" "OEM Unlock Allowed" "getprop sys.oem_unlock_allowed" "0" "critical" "Should be disabled to prevent unlock"
+evaluate_check "BOOT & SECURITY" "USB Debugging" "settings get global adb_enabled" "0" "warning" "Disable unless needed"
+evaluate_check "BOOT & SECURITY" "Unknown Sources" "settings get secure install_non_market_apps" "0" "warning" "Should be disabled"
+evaluate_check "BOOT & SECURITY" "Device Debuggable" "getprop ro.debuggable" "0" "critical" "Production devices must not be debuggable"
+evaluate_check "BOOT & SECURITY" "Safe Mode" "getprop persist.sys.safemode" "0" "info" "Should not be running in Safe Mode"
+evaluate_check "BOOT & SECURITY" "FRP Policy" "settings get global frp_policy" "1" "critical" "Factory Reset Protection should be enabled"
+evaluate_check "BOOT & SECURITY" "ADB Over Wi-Fi" "settings get global adb_wifi_enabled" "0" "warning" "Risky if enabled"
 
-# --- NETWORK & FILESYSTEM ---
-echo -e "\n${BLUE}${BOLD}[*] NETWORK & FILESYSTEM${NC}${NORMAL}"
-evaluate_check "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::' | wc -l" "0" "critical" "No open TCP/UDP ports"
-evaluate_check "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
-evaluate_check "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Certs could bypass pinning"
-evaluate_check "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {{}} \; 2>/dev/null | wc -l" "0" "critical" "Privilege escalation vectors"
-evaluate_check "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {{}} \; 2>/dev/null | wc -l" "0" "critical" "Unprotected sensitive files"
+# APPS & RUNTIME
+evaluate_check "APPS & RUNTIME" "Root Access (su)" "which su" "^$" "critical" "Check for root binaries"
+evaluate_check "APPS & RUNTIME" "Debuggable Apps" "pm list packages -d | wc -l" "0" "warning" "Debuggable apps should be 0"
+evaluate_check "APPS & RUNTIME" "Accessibility Services" "settings get secure enabled_accessibility_services" "^$" "warning" "Keylogging/clickjacking risk"
+evaluate_check "APPS & RUNTIME" "Device Admin Apps" "dumpsys device_policy | grep 'Admin:' | wc -l" "0" "warning" "Admins may have control"
+evaluate_check "APPS & RUNTIME" "Running Services Count" "dumpsys activity services | grep -E 'package|process' | wc -l" ".*" "info" "Running services on device"
+
+# NETWORK & FILESYSTEM
+evaluate_check "NETWORK & FILESYSTEM" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "critical" "No open TCP/UDP ports"
+evaluate_check "NETWORK & FILESYSTEM" "Open TCP Ports (excluding localhost)" "netstat -lntp | grep -v 127.0.0.1" "^\s*$" "critical" "No open TCP ports externally accessible"
+evaluate_check "NETWORK & FILESYSTEM" "Open UDP Ports (excluding localhost)" "netstat -lnup | grep -v 127.0.0.1" "^\s*$" "critical" "No open UDP ports externally accessible"
+
+# evaluate_check NETWORK & FILESYSTEM" "Open Ports (All)" "netstat -tuln | grep -E '0.0.0.0|::'; netstat -lntp | grep -v 127.0.0.1; netstat -lnup | grep -v 127.0.0.1" "^\s*$" "critical" "No open TCP/UDP ports externally accessible"
+evaluate_check "NETWORK & FILESYSTEM" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
+evaluate_check "NETWORK & FILESYSTEM" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Certs could bypass pinning"
+evaluate_check "NETWORK & FILESYSTEM" "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {} \; 2>/dev/null | wc -l" "0" "critical" "Privilege escalation vectors"
+evaluate_check "NETWORK & FILESYSTEM" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "0" "critical" "Unprotected sensitive files"
+
+# ADDITIONAL SECURITY CHECKS
+evaluate_check "ADDITIONAL SECURITY" "Play Protect" "settings get secure package_verifier_enable" "1" "warning" "Play Protect should be enabled"
+evaluate_check "ADDITIONAL SECURITY" "Security Patch Level" "getprop ro.build.version.security_patch" "[0-9]{4}-[0-9]{2}-[0-9]{2}" "info" "Check for latest Android patch level"
+evaluate_check "ADDITIONAL SECURITY" "Keyguard Timeout" "settings get secure lock_screen_lock_after_timeout" ".*" "info" "Time delay before screen locks"
+evaluate_check "ADDITIONAL SECURITY" "Third-Party App Stores" "pm list packages | grep -E 'amazon|aptoide|getjar'" "^$" "warning" "Avoid non-Google app stores"
+evaluate_check "ADDITIONAL SECURITY" "User-installed Apps" "pm list packages -3 | wc -l" ".*" "info" "Check how many user apps installed"
+evaluate_check "ADDITIONAL SECURITY" "Logcat Access" "getprop ro.debuggable" "0" "critical" "Only system should access logs"
+evaluate_check "ADDITIONAL SECURITY" "Unusual Files in /sdcard/" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Sensitive files in user-accessible storage"
+# evaluate_check ADDITIONAL SECURITY VPN Active dumpsys connectivity | grep -i vpn .* info Indicates if VPN is running"
+evaluate_check "ADDITIONAL SECURITY" "Wi-Fi SSID" "dumpsys netstats | grep -i 'iface=wlan0'" ".*" "info" "Shows current Wi-Fi network"
+evaluate_check "ADDITIONAL SECURITY" "Zygote Process Check" "ps | grep zygote" "zygote" "critical" "Zygote process is core to Android app lifecycle"
+
+# APP & SYSTEM INTEGRITY
+evaluate_check "APP & SYSTEM INTEGRITY" "AppOps: private-data access" "dumpsys appops | grep -E 'READ_EXTERNAL_STORAGE|ACCESS_FINE_LOCATION'" "mode=ignore" "safe" "Monitor unexpected accesses to sensitive data"
+evaluate_check "APP & SYSTEM INTEGRITY" "Security Tools Detected" "pm list packages | grep -E 'org.mobsf|com.offsec.nethunter|de.robv.android.xposed'" "^$" "warning" "Pentest frameworks or hacking tools found"
+evaluate_check "APP & SYSTEM INTEGRITY" "Custom CAs Installed" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Custom certs may bypass pinning"
+evaluate_check "APP & SYSTEM INTEGRITY" "APK Signature Path Check" "pm list packages -f | grep .apk | head -n 1" "package:" "info" "Checks for valid APK path info"
 
 
-# --- ADDITIONAL SECURITY CHECKS ---
+# Summary
+echo -e "\n===== AUDIT SUMMARY =====" >> "$txt_file"
+echo -e "Critical Issues: $critical_count" >> "$txt_file"
+echo -e "Warnings: $warning_count" >> "$txt_file"
+echo -e "Safe Checks: $safe_count" >> "$txt_file"
 
-echo -e "\n${BLUE}${BOLD}[*] ADDITIONAL SECURITY CHECKS${NC}${NORMAL}"
+echo "<h2>Audit Summary</h2>" >> "$html_file"
+echo "<p><strong>Critical Issues:</strong> $critical_count</p>" >> "$html_file"
+echo "<p><strong>Warnings:</strong> $warning_count</p>" >> "$html_file"
+echo "<p><strong>Safe Checks:</strong> $safe_count</p>" >> "$html_file"
+echo "</body></html>" >> "$html_file"
 
-evaluate_check "Play Protect" "settings get secure package_verifier_enable" "1" "warning" "Play Protect should be enabled"
-evaluate_check "Security Patch Level" "getprop ro.build.version.security_patch" "[0-9]{4}-[0-9]{2}-[0-9]{2}" "info" "Check for latest Android patch level"
-evaluate_check "Keyguard Timeout" "settings get secure lock_screen_lock_after_timeout" ".*" "info" "Time delay before screen locks"
-
-evaluate_check "Third-Party App Stores" "pm list packages | grep -E 'amazon|aptoide|getjar'" "^$" "warning" "Avoid non-Google app stores"
-evaluate_check "User-installed Apps" "pm list packages -3 | wc -l" ".*" "info" "Check how many user apps installed"
-
-evaluate_check "Logcat Access" "getprop ro.debuggable" "0" "critical" "Only system should access logs"
-evaluate_check "Unusual Files in /sdcard/" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Sensitive files in user-accessible storage"
-
-evaluate_check "VPN Active" "dumpsys connectivity | grep -i vpn" ".*" "info" "Indicates if VPN is running"
-evaluate_check "Wi-Fi SSID" "dumpsys netstats | grep -i 'iface=wlan0'" ".*" "info" "Shows current Wi-Fi network"
-
-evaluate_check "Zygote Process Check" "ps | grep zygote" "zygote" "critical" "Zygote process is core to Android app lifecycle"
-
-
-# --- APP & SYSTEM INTEGRITY CHECKS (ADB-BASED) ---
-
-echo -e "\n${BLUE}${BOLD}[*] APP & SYSTEM INTEGRITY CHECKS${NC}${NORMAL}"
-
-# AppOps for private-data access (Android 11+)
-evaluate_check "AppOps: private-data access" "dumpsys appops | grep -E 'READ_EXTERNAL_STORAGE|ACCESS_FINE_LOCATION'" "^$" "warning" "Monitor unexpected accesses to sensitive data"
-
-# Known Pentest Tools Detected
-evaluate_check "Security Tools Detected" "pm list packages | grep -E 'org.mobsf|com.offsec.nethunter|de.robv.android.xposed'" "^$" "warning" "Pentest frameworks or hacking tools found"
-
-# Custom CAs installed
-evaluate_check "Custom CAs Installed" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Custom certs may bypass pinning"
-
-# APK Signature Path Validity (basic)
-evaluate_check "APK Signature Path Check" "pm list packages -f | grep .apk | head -n 1" "package:" "info" "Checks for valid APK path info"
-
-# --- SUMMARY ---
-echo -e "\n===== AUDIT SUMMARY ====="
-echo -e "${RED}Critical Issues: $critical_count${NC}"
-echo -e "${YELLOW}Warnings: $warning_count${NC}"
-echo -e "${GREEN}Safe Checks: $safe_count${NC}"
-echo -e "📄 Report saved to: $output_file"
+echo -e "\n📄 TXT Report saved to: $txt_file"
+echo -e "🌐 HTML Report saved to: $html_file"
