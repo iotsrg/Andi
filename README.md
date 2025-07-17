@@ -2,34 +2,116 @@
 
 **AndiScan** is a no-root, portable Android security auditing tool that inspects Android smartphones, tablets, and smart devices over ADB.
 
-## 🛡️ Features
-- Full system audit with risk classification (SAFE, WARNING, CRITICAL)
-- Color-coded CLI output with detailed timestamped report
-- Designed for mobile phones and embedded Android-based devices
-- No root access required
+[![Platform](https://img.shields.io/badge/platform-Android-blue)](https://developer.android.com/)
+[![ADB Required](https://img.shields.io/badge/ADB-Required-green)](https://developer.android.com/studio/command-line/adb)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Shell Script](https://img.shields.io/badge/language-Bash-lightgrey)](https://www.gnu.org/software/bash/)
+[![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)]()
 
-## 🚀 Installation
+A powerful and extensible **Android Security Auditing Script** designed for penetration testers, red teams, forensic analysts, and IoT security professionals.
+
+This tool inspects **device security posture** using ADB with **zero modifications or app installations**.
+
+---
+
+## ✨ Features
+
+- 📱 Device & SoC fingerprinting
+- 🔐 Bootloader, encryption, and Verified Boot checks
+- ⚠️ Root, Magisk, Xposed & Frida detection
+- 🧠 App runtime configuration & dangerous permission checks
+- 🌐 Network, proxy, open port & captive portal detection
+- 🗂️ Filesystem audit for `SUID`, world-writable & `tmpfs`
+- 🔒 SELinux, ADB Keys, USB Debugging, Safe Mode analysis
+- 📈 Auto-generated TXT and HTML reports with chart visualizations
+
+---
+
+## 🚀 Usage
 
 ```bash
-curl -sL https://raw.githubusercontent.com/<your-username>/AndiScan/main/install.sh | bash
+git clone https://github.com/yourusername/android-audit-tool.git
+cd android-audit-tool
+chmod +x android_audit_v5.4_full_fixed.sh
+./android_audit_v5.4_full_fixed.sh
 ```
 
-## 🧪 Usage
+> 🔌 Make sure a device is connected and authorized via ADB before running.
 
-```bash
-./andiscan.sh
-```
+---
 
-Run in quick mode (if available):
-```bash
-./andiscan.sh --quick
-```
+## 📂 Output
 
-## 📄 Output
+- All reports are stored under the `android_audit_output/` folder:
+  - ✅ `txt_report_<timestamp>/audit_report.txt`
+  - 🌐 `html_report_<timestamp>/audit_report.html` (with Chart.js visualization)
 
-- Terminal-based audit results with colors
-- Full `.txt` report saved with timestamp
+---
 
-## 📃 License
+## 📋 Example Output (HTML)
 
-MIT License
+![audit-html-preview](https://i.imgur.com/XvW7qJd.png)
+
+---
+
+## 📚 Checks Performed
+
+| Category         | Description                                      |
+|------------------|--------------------------------------------------|
+| **Boot & Device**| Verified Boot, OEM Unlock, Flash Lock, Encryption |
+| **Apps & Runtime**| Debuggable, Admins, Accessibility, APKs         |
+| **Root & Bypass**| Magisk, su, Xposed, Frida                        |
+| **Network Stack**| Open Ports, DNS, Proxy, Captive Portal           |
+| **File System**  | SUID, World-Writable, tmpfs, mount flags         |
+| **User Privacy** | Lock screen, Trust Agents, Location, ADB keys    |
+| **System Health**| Kernel version, Zygote check, Process snapshot   |
+
+---
+
+## 🔒 Security Philosophy
+
+This tool follows the **non-invasive, read-only** principle. It does not install apps, write files to the device, or require root unless explicitly requested.
+
+---
+
+## 🧠 Ideal Use Cases
+
+- Android smartphone audits
+- IoT device Android firmware testing
+- Pre-deployment enterprise validation
+- Mobile app security posture verification
+
+---
+
+## 🛠 Requirements
+
+- `adb` installed and accessible from terminal
+- Bash-compatible environment (Linux/macOS/WSL)
+- Android device with USB debugging enabled
+
+---
+
+## 🧩 Optional Enhancements (Planned)
+
+- [ ] Frida-assisted runtime fuzzing
+- [ ] OTA/bootloader image comparison (offline)
+- [ ] Integration with MobSF for APK scanning
+- [ ] PDF report generation
+
+---
+
+## 👨‍💻 Author
+
+**Mr-IoT**  
+🔬 Founder of [IoTSRG.org](https://iotsrg.org)  
+🐙 [GitHub](https://github.com/iotsrg) • 🐦 [Twitter](https://twitter.com/) • 💼 [LinkedIn](https://www.linkedin.com/)
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+> _“If you can't audit it, you can't trust it.” — Unknown_
