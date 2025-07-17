@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================
-# ULTIMATE ANDROID SECURITY AUDIT SCRIPT 
+# ULTIMATE ANDROID SECURITY AUDIT SCRIPT
 # ==============================================
 
 timestamp=$(date +%Y%m%d_%H%M%S)
@@ -17,12 +17,16 @@ warning_count=0
 safe_count=0
 
 # HTML header
-echo "<html>
+echo '<html>
 <head>
   <title>Android Security Audit Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-    h1, h2, h3 { color: #333; }
+    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f4; padding: 20px; }
+    h1, h2, h3 { color: #222; }
+    .summary-table { border-collapse: collapse; width: 50%; margin-bottom: 20px; }
+    .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    .summary-table th { background-color: #eee; }
     .box { border-radius: 5px; padding: 15px; margin: 10px 0; }
     .safe { background-color: #e0f7e9; border-left: 6px solid #2e7d32; }
     .warning { background-color: #fff8e1; border-left: 6px solid #f9a825; }
@@ -31,14 +35,39 @@ echo "<html>
     pre { background: #eee; padding: 10px; overflow-x: auto; }
   </style>
 </head>
-<body>" > "$html_file"
-echo "<h1>ANDROID SECURITY AUDIT REPORT</h1>" >> "$html_file"
-echo "<p>Generated: $(date '+%Y-%m-%d %H:%M:%S')</p>" >> "$html_file"
+<body>
+<h1>Android Security Audit Report</h1>
+<p><strong>Generated:</strong> 2025-07-17 04:07:47</p>
+<div style="float:right; width:250px;"><canvas id="summaryChart" width="250" height="250"></canvas></div>
+<script>
+window.onload = function() {
+  var ctx = document.getElementById("summaryChart").getContext("2d");
+  window.chart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Safe", "Warnings", "Critical"],
+      datasets: [{
+        label: "Audit Results",
+        data: [SAFE_COUNT, WARNING_COUNT, CRITICAL_COUNT],
+        backgroundColor: ["#66bb6a", "#fdd835", "#ef5350"]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "top"
+        }
+      }
+    }
+  });
+}
+</script>' > "$html_file"
 
-# ADB Check
+# Device connection check
 if ! adb get-state 1>/dev/null 2>&1; then
-    echo "[X] No device detected via ADB"
-    exit 1
+  echo "[X] No device detected via ADB"
+  exit 1
 fi
 
 # Device Info
@@ -51,18 +80,15 @@ soc_model=$(adb shell getprop ro.soc.model | tr -d '\r')
 
 echo -e "Device: $model\nBrand: $brand\nManufacturer: $manufacturer\nName: $name\nSoC Manufacturer: $soc_manufacturer\nSoC Model: $soc_model" >> "$txt_file"
 
-echo "<h2>Device Information</h2>" >> "$html_file"
-echo "<ul>" >> "$html_file"
+echo "<h2>Device Information</h2><ul>" >> "$html_file"
 echo "<li><strong>Model:</strong> $model</li>" >> "$html_file"
 echo "<li><strong>Brand:</strong> $brand</li>" >> "$html_file"
 echo "<li><strong>Manufacturer:</strong> $manufacturer</li>" >> "$html_file"
 echo "<li><strong>Device Name:</strong> $name</li>" >> "$html_file"
 echo "<li><strong>SoC Manufacturer:</strong> $soc_manufacturer</li>" >> "$html_file"
-echo "<li><strong>SoC Model:</strong> $soc_model</li>" >> "$html_file"
-echo "</ul>" >> "$html_file"
+echo "<li><strong>SoC Model:</strong> $soc_model</li></ul>" >> "$html_file"
 
-
-# Function to evaluate checks
+# Evaluation function
 evaluate_check() {
   local category="$1"
   local label="$2"
@@ -73,13 +99,12 @@ evaluate_check() {
 
   result=$(adb shell "$command" 2>/dev/null | tr -d '\r' || echo "[Not Supported]")
 
-  echo -e "[$category] $label" >> "$txt_file"
-  echo -e "Command: $command" >> "$txt_file"
-  echo -e "Description: $desc" >> "$txt_file"
-  echo -e "Result: $result" >> "$txt_file"
+  echo -e "\n# ==========================================" >> "$txt_file"
+  echo -e "# CATEGORY: $category" >> "$txt_file"
+  echo -e "# ==========================================" >> "$txt_file"
+  echo -e "Check: $label\nCommand: $command\nDescription: $desc\nResult: $result" >> "$txt_file"
 
-  echo "<h3>$category - $label</h3>" >> "$html_file"
-  echo "<p><strong>Command:</strong> $command<br>" >> "$html_file"
+  echo "<h3>$category - $label</h3><p><strong>Command:</strong> $command<br>" >> "$html_file"
   echo "<strong>Description:</strong> $desc<br>" >> "$html_file"
 
   if [[ "$label" == "Open Ports" ]]; then
@@ -89,28 +114,31 @@ evaluate_check() {
   fi
 
   if [[ "$result" =~ $safe_pattern ]]; then
-    echo -e "Status: SAFE\n" >> "$txt_file"
+    echo "Status: SAFE" >> "$txt_file"
     echo "<div class='box safe'><strong>Status:</strong> SAFE</div>" >> "$html_file"
     ((safe_count++))
   else
     case "$level" in
       "critical")
-        echo -e "Status: CRITICAL\n" >> "$txt_file"
+        echo "Status: CRITICAL" >> "$txt_file"
         echo "<div class='box critical'><strong>Status:</strong> CRITICAL</div>" >> "$html_file"
         ((critical_count++))
+echo "<p><strong>How to Fix:</strong> Refer to the official documentation or disable/uninstall if insecure.</p>" >> "$html_file"
+echo "<p><a href=\"https://source.android.com/security\" target=\"_blank\">Android Security Guidelines</a></p>" >> "$html_file"
         ;;
       "warning")
-        echo -e "Status: WARNING\n" >> "$txt_file"
+        echo "Status: WARNING" >> "$txt_file"
         echo "<div class='box warning'><strong>Status:</strong> WARNING</div>" >> "$html_file"
         ((warning_count++))
         ;;
       *)
-        echo -e "Status: INFO\n" >> "$txt_file"
+        echo "Status: INFO" >> "$txt_file"
         echo "<div class='box info'><strong>Status:</strong> INFO</div>" >> "$html_file"
         ;;
     esac
   fi
 }
+
 
 # === SECURITY CHECKS ===
 
@@ -142,22 +170,19 @@ evaluate_check "APPS & RUNTIME" "Running Services Count" "dumpsys activity servi
 evaluate_check "NETWORK & FILESYSTEM" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "critical" "No open TCP/UDP ports"
 evaluate_check "NETWORK & FILESYSTEM" "Open TCP Ports (excluding localhost)" "netstat -lntp | grep -v 127.0.0.1" "^\s*$" "critical" "No open TCP ports externally accessible"
 evaluate_check "NETWORK & FILESYSTEM" "Open UDP Ports (excluding localhost)" "netstat -lnup | grep -v 127.0.0.1" "^\s*$" "critical" "No open UDP ports externally accessible"
-
-# evaluate_check NETWORK & FILESYSTEM" "Open Ports (All)" "netstat -tuln | grep -E '0.0.0.0|::'; netstat -lntp | grep -v 127.0.0.1; netstat -lnup | grep -v 127.0.0.1" "^\s*$" "critical" "No open TCP/UDP ports externally accessible"
 evaluate_check "NETWORK & FILESYSTEM" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
 evaluate_check "NETWORK & FILESYSTEM" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Certs could bypass pinning"
-evaluate_check "NETWORK & FILESYSTEM" "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {} \; 2>/dev/null | wc -l" "0" "critical" "Privilege escalation vectors"
-evaluate_check "NETWORK & FILESYSTEM" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "0" "critical" "Unprotected sensitive files"
+evaluate_check "NETWORK & FILESYSTEM" "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {{}} \; 2>/dev/null | wc -l" "0" "critical" "Privilege escalation vectors"
+evaluate_check "NETWORK & FILESYSTEM" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {{}} \; 2>/dev/null | wc -l" "0" "critical" "Unprotected sensitive files"
 
-# ADDITIONAL SECURITY CHECKS
+# ADDITIONAL SECURITY
 evaluate_check "ADDITIONAL SECURITY" "Play Protect" "settings get secure package_verifier_enable" "1" "warning" "Play Protect should be enabled"
-evaluate_check "ADDITIONAL SECURITY" "Security Patch Level" "getprop ro.build.version.security_patch" "[0-9]{4}-[0-9]{2}-[0-9]{2}" "info" "Check for latest Android patch level"
+evaluate_check "ADDITIONAL SECURITY" "Security Patch Level" "getprop ro.build.version.security_patch" "[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}" "info" "Check for latest Android patch level"
 evaluate_check "ADDITIONAL SECURITY" "Keyguard Timeout" "settings get secure lock_screen_lock_after_timeout" ".*" "info" "Time delay before screen locks"
 evaluate_check "ADDITIONAL SECURITY" "Third-Party App Stores" "pm list packages | grep -E 'amazon|aptoide|getjar'" "^$" "warning" "Avoid non-Google app stores"
 evaluate_check "ADDITIONAL SECURITY" "User-installed Apps" "pm list packages -3 | wc -l" ".*" "info" "Check how many user apps installed"
 evaluate_check "ADDITIONAL SECURITY" "Logcat Access" "getprop ro.debuggable" "0" "critical" "Only system should access logs"
 evaluate_check "ADDITIONAL SECURITY" "Unusual Files in /sdcard/" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Sensitive files in user-accessible storage"
-# evaluate_check ADDITIONAL SECURITY VPN Active dumpsys connectivity | grep -i vpn .* info Indicates if VPN is running"
 evaluate_check "ADDITIONAL SECURITY" "Wi-Fi SSID" "dumpsys netstats | grep -i 'iface=wlan0'" ".*" "info" "Shows current Wi-Fi network"
 evaluate_check "ADDITIONAL SECURITY" "Zygote Process Check" "ps | grep zygote" "zygote" "critical" "Zygote process is core to Android app lifecycle"
 
@@ -166,7 +191,8 @@ evaluate_check "APP & SYSTEM INTEGRITY" "AppOps: private-data access" "dumpsys a
 evaluate_check "APP & SYSTEM INTEGRITY" "Security Tools Detected" "pm list packages | grep -E 'org.mobsf|com.offsec.nethunter|de.robv.android.xposed'" "^$" "warning" "Pentest frameworks or hacking tools found"
 evaluate_check "APP & SYSTEM INTEGRITY" "Custom CAs Installed" "ls /data/misc/user/0/cacerts-added/ | wc -l" "0" "warning" "Custom certs may bypass pinning"
 evaluate_check "APP & SYSTEM INTEGRITY" "APK Signature Path Check" "pm list packages -f | grep .apk | head -n 1" "package:" "info" "Checks for valid APK path info"
-
+# Example critical check with URL in footer
+evaluate_check "BOOT & SECURITY" "Verified Boot State" "getprop ro.boot.verifiedbootstate" "green" "critical" "Should be green for locked bootloader"
 
 # Summary
 echo -e "\n===== AUDIT SUMMARY =====" >> "$txt_file"
@@ -178,7 +204,20 @@ echo "<h2>Audit Summary</h2>" >> "$html_file"
 echo "<p><strong>Critical Issues:</strong> $critical_count</p>" >> "$html_file"
 echo "<p><strong>Warnings:</strong> $warning_count</p>" >> "$html_file"
 echo "<p><strong>Safe Checks:</strong> $safe_count</p>" >> "$html_file"
-echo "</body></html>" >> "$html_file"
+
+echo "<h2>📌 Critical Reference Links</h2>
+<ul>
+  <li><strong>Verified Boot State:</strong> <a href='https://source.android.com/docs/security/features/verifiedboot' target='_blank'>Verified Boot Docs</a></li>
+  <li><strong>Encryption:</strong> <a href='https://source.android.com/docs/security/features/encryption' target='_blank'>Android Encryption Docs</a></li>
+  <li><strong>OEM Unlock Allowed:</strong> <a href='https://source.android.com/docs/security/features/verifiedboot/unlock' target='_blank'>OEM Unlock Policy</a></li>
+  <li><strong>Device Debuggable:</strong> <a href='https://source.android.com/docs/core/architecture/debugging' target='_blank'>Debuggable Devices</a></li>
+</ul>
+</body></html>" >> "$html_file"
+
+# Replace JS chart variables
+sed -i "s/SAFE_COUNT/$safe_count/g" "$html_file"
+sed -i "s/WARNING_COUNT/$warning_count/g" "$html_file"
+sed -i "s/CRITICAL_COUNT/$critical_count/g" "$html_file"
 
 echo -e "\n📄 TXT Report saved to: $txt_file"
 echo -e "🌐 HTML Report saved to: $html_file"
