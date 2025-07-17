@@ -1,6 +1,6 @@
-# 🤖 AndiScan - Android Inspector Scanner
+# 🤖 Andi - Android Inspector 
 
-**AndiScan** is a no-root, portable Android security auditing tool that inspects Android smartphones, tablets, and smart devices over ADB.
+**Andi** is a no-root, portable Android security auditing tool that inspects Android smartphones, tablets, and smart devices over ADB.
 
 [![Platform](https://img.shields.io/badge/platform-Android-blue)](https://developer.android.com/)
 [![ADB Required](https://img.shields.io/badge/ADB-Required-green)](https://developer.android.com/studio/command-line/adb)
