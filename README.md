@@ -92,16 +92,7 @@ This tool follows the **non-invasive, read-only** principle. It does not install
 
 - [ ] Frida-assisted runtime fuzzing
 - [ ] OTA/bootloader image comparison (offline)
-- [ ] Integration with MobSF for APK scanning
 - [ ] PDF report generation
-
----
-
-## 👨‍💻 Author
-
-**Mr-IoT**  
-🔬 Founder of [IoTSRG.org](https://iotsrg.org)  
-🐙 [GitHub](https://github.com/iotsrg) • 🐦 [Twitter](https://twitter.com/) • 💼 [LinkedIn](https://www.linkedin.com/)
 
 ---
 
