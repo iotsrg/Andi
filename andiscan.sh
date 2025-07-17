@@ -243,9 +243,9 @@ evaluate_check "MALWARE SCAN" "Temp APKs in /data/local/tmp" "ls /data/local/tmp
 evaluate_check "MALWARE SCAN" "Suspicious SDCard Files" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Suspicious files stored externally"
 evaluate_check "MALWARE SCAN" "Non-System Apps Count" "pm list packages -3 | wc -l" ".*" "info" "Apps installed outside system image"
 
-# Additional CHECKS
-evaluate_check "CIS MODE" "USB File Transfer Disabled" "settings get global usb_mass_storage_enabled" "^0$" "warning" "Should be disabled to block unauthorized USB file access"
-evaluate_check "CIS MODE" "Development Settings Disabled" "settings get global development_settings_enabled" "^0$" "warning" "Developer mode should be disabled for production devices"
-evaluate_check "CIS MODE" "Wi-Fi Direct Disabled (WFD)" "pm list packages | grep wfd" "^$" "warning" "Wi-Fi Direct (WFD) should be removed if unused"
-evaluate_check "CIS MODE" "Auto System Update Enabled" "settings get global auto_update_system" "^1$" "info" "Auto updates improve patch consistency"
-evaluate_check "CIS MODE" "Credential Storage Cleared" "ls /data/misc/keystore/user_0" "^ls:.*No such file or directory$" "info" "No residual user credential files"
+# Additional CHECKS CIS 
+evaluate_check  "USB File Transfer Disabled" "settings get global usb_mass_storage_enabled" "^0$" "warning" "Should be disabled to block unauthorized USB file access"
+evaluate_check  "Development Settings Disabled" "settings get global development_settings_enabled" "^0$" "warning" "Developer mode should be disabled for production devices"
+evaluate_check  "Wi-Fi Direct Disabled (WFD)" "pm list packages | grep wfd" "^$" "warning" "Wi-Fi Direct (WFD) should be removed if unused"
+evaluate_check  "Auto System Update Enabled" "settings get global auto_update_system" "^1$" "info" "Auto updates improve patch consistency"
+evaluate_check  "Credential Storage Cleared" "ls /data/misc/keystore/user_0" "^ls:.*No such file or directory$" "info" "No residual user credential files"
