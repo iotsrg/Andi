@@ -30,10 +30,7 @@ This tool inspects **device security posture** using ADB with **zero modificatio
 ## 🚀 Usage
 
 ```bash
-git clone https://github.com/yourusername/android-audit-tool.git
-cd android-audit-tool
-chmod +x android_audit_v5.4_full_fixed.sh
-./android_audit_v5.4_full_fixed.sh
+
 ```
 
 > 🔌 Make sure a device is connected and authorized via ADB before running.
