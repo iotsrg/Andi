@@ -28,6 +28,37 @@ critical_count=0
 warning_count=0
 safe_count=0
 
+# ---- Fallback Functions for Property Lookup ----
+
+get_prop_fallback() {
+    for prop in "$@"; do
+        value=$(adb shell getprop $prop | tr -d '\r')
+        if [[ ! -z "$value" ]]; then
+            echo "$value (from $prop)"
+            return
+        fi
+    done
+    echo "(unknown)"
+}
+
+get_prop_fallback_with_cpuinfo() {
+    for prop in "$@"; do
+        value=$(adb shell getprop $prop | tr -d '\r')
+        if [[ ! -z "$value" ]]; then
+            echo "$value (from $prop)"
+            return
+        fi
+    done
+    value=$(adb shell cat /proc/cpuinfo | grep -m1 -i 'hardware' | awk -F':' '{print $2}' | xargs)
+    if [[ ! -z "$value" ]]; then
+        echo "$value (from /proc/cpuinfo)"
+        return
+    fi
+    echo "(unknown)"
+}
+
+# -----------------------------------------------
+
 # HTML Header
 cat <<EOF > "$html_file"
 <html>
@@ -102,13 +133,13 @@ if ! adb get-state 1>/dev/null 2>&1; then
   exit 1
 fi
 
-# === DEVICE INFO COLLECTION ===
-model=$(adb shell getprop ro.product.model | tr -d '\r')
-brand=$(adb shell getprop ro.product.brand | tr -d '\r')
-manufacturer=$(adb shell getprop ro.product.manufacturer | tr -d '\r')
-name=$(adb shell getprop ro.product.name | tr -d '\r')
-soc_manufacturer=$(adb shell getprop ro.soc.manufacturer | tr -d '\r')
-soc_model=$(adb shell getprop ro.soc.model | tr -d '\r')
+# === DEVICE INFO COLLECTION WITH FALLBACKS ===
+model=$(get_prop_fallback ro.product.model ro.product.device ro.product.name)
+brand=$(get_prop_fallback ro.product.brand ro.product.manufacturer)
+manufacturer=$(get_prop_fallback ro.product.manufacturer ro.product.brand)
+name=$(get_prop_fallback ro.product.name ro.product.model)
+soc_manufacturer=$(get_prop_fallback ro.soc.manufacturer ro.board.platform ro.hardware)
+soc_model=$(get_prop_fallback_with_cpuinfo ro.soc.model ro.hardware ro.board.platform)
 android_version=$(adb shell getprop ro.build.version.release | tr -d '\r')
 sdk_level=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
 build_id=$(adb shell getprop ro.build.display.id | tr -d '\r')
@@ -117,20 +148,28 @@ serialno=$(adb shell getprop ro.serialno | tr -d '\r')
 [[ -z "$serialno" ]] && serialno=$(adb shell getprop ro.boot.serialno | tr -d '\r')
 timezone=$(adb shell getprop persist.sys.timezone | tr -d '\r')
 
-# TXT Report Output
-echo -e "Model: $model\nBrand: $brand\nManufacturer: $manufacturer\nName: $name\nSoC Manufacturer: $soc_manufacturer\nSoC Model: $soc_model\nAndroid Version: $android_version\nSDK Level: $sdk_level\nBuild ID: $build_id\nFingerprint: $fingerprint\nSerial Number: $serialno\nTimezone: $timezone" >> "$txt_file"
+# --- Clean output (strip fallback labels for report) ---
+clean_model=$(echo "$model" | sed 's/ (from .*//')
+clean_brand=$(echo "$brand" | sed 's/ (from .*//')
+clean_manufacturer=$(echo "$manufacturer" | sed 's/ (from .*//')
+clean_name=$(echo "$name" | sed 's/ (from .*//')
+clean_soc_manufacturer=$(echo "$soc_manufacturer" | sed 's/ (from .*//')
+clean_soc_model=$(echo "$soc_model" | sed 's/ (from .*//')
 
-# HTML Report Output
+# --- TXT Report Output ---
+echo -e "Model: $clean_model\nBrand: $clean_brand\nManufacturer: $clean_manufacturer\nName: $clean_name\nSoC Manufacturer: $clean_soc_manufacturer\nSoC Model: $clean_soc_model\nAndroid Version: $android_version\nSDK Level: $sdk_level\nBuild ID: $build_id\nFingerprint: $fingerprint\nSerial Number: $serialno\nTimezone: $timezone" >> "$txt_file"
+
+# --- HTML Report Output ---
 cat <<EOF >> "$html_file"
 <h2>Device Information</h2>
 <div class="box info">
   <ul style="list-style: none; padding-left: 0;">
-    <li><strong>Model:</strong> $model</li>
-    <li><strong>Brand:</strong> $brand</li>
-    <li><strong>Manufacturer:</strong> $manufacturer</li>
-    <li><strong>Device Name:</strong> $name</li>
-    <li><strong>SoC Manufacturer:</strong> $soc_manufacturer</li>
-    <li><strong>SoC Model:</strong> $soc_model</li>
+    <li><strong>Model:</strong> $clean_model</li>
+    <li><strong>Brand:</strong> $clean_brand</li>
+    <li><strong>Manufacturer:</strong> $clean_manufacturer</li>
+    <li><strong>Device Name:</strong> $clean_name</li>
+    <li><strong>SoC Manufacturer:</strong> $clean_soc_manufacturer</li>
+    <li><strong>SoC Model:</strong> $clean_soc_model</li>
     <li><strong>Android Version:</strong> $android_version</li>
     <li><strong>SDK Level:</strong> $sdk_level</li>
     <li><strong>Build ID:</strong> $build_id</li>
@@ -201,6 +240,9 @@ Result: $result" >> "$txt_file"
     fi
     echo "</section><hr>" >> "$html_file"
 }
+
+# === SECURITY CHECKS ===
+# (Paste your existing evaluate_check lines here!)
 
 # === SECURITY CHECKS ===
 # Truncated the rest for clarity. You can append your existing checks block below here.
@@ -349,10 +391,6 @@ evaluate_check "BLUETOOTH" "Paired Devices Count" "dumpsys bluetooth_manager | g
 evaluate_check "BLUETOOTH" "HCI Snoop Logging" "settings get secure bluetooth_hci_log" "^0$" "info" "HCI logging should be disabled in production (AU-12)"
 evaluate_check "BLUETOOTH" "Unnecessary Profiles" "dumpsys bluetooth_manager | grep 'Profile:' | grep -vE 'A2DP|HFP|HSP'" "^$" "warning" "Disable unused profiles (CM-7)"
 evaluate_check "BLUETOOTH" "LE Security Mode" "dumpsys bluetooth_manager | grep 'LE Security Mode:'" "LE Security Mode: [2-4]" "critical" "LE should use Mode 2 (Secure Connections) or higher (SC-13)"
-
-evaluate_check "NETWORK & FILESYSTEM" "Open External Ports" \
-"netstat -tuln | awk '\$4 !~ /127\.0\.0\.1/ && \$4 !~ /::1/ {print}'" \
-"^$" "critical" "No open TCP/UDP ports externally accessible (excluding localhost)."
 
 # ... (all your other checks from previous script go here) ...
 
