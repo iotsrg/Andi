@@ -1,8 +1,20 @@
 #!/bin/bash
 
 # ==============================================
-# ULTIMATE ANDROID SECURITY AUDIT SCRIPT
+# ANDISCAN - Android Security Audit Script
 # ==============================================
+
+cat << "EOF"
+    _    _   _ ____ ___ 
+   / \  | \ | |  _ \_ _|
+  / _ \ |  \| | | | | | 
+ / ___ \| |\  | |_| | | 
+/_/   \_\_| \_|____/___|
+
+ANDI - Android Inspector
+by IoTSRG Team
+
+EOF
 
 timestamp=$(date +%Y%m%d_%H%M%S)
 txt_dir="android_audit_output/txt_report_$timestamp"
@@ -23,7 +35,7 @@ cat <<EOF > "$html_file"
   <title>Android Security Audit Report</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f4; padding: 20px; }
+    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f4; padding: 20px; transition:background 0.3s,color 0.3s;}
     .summary-table { border-collapse: collapse; width: 50%; margin-bottom: 20px; }
     .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     .summary-table th { background-color: #eee; }
@@ -33,10 +45,29 @@ cat <<EOF > "$html_file"
     .critical { background-color: #ffebee; border-left: 6px solid #c62828; }
     .info { background-color: #e3f2fd; border-left: 6px solid #1565c0; }
     pre { background: #f9f9f9; padding: 10px; overflow-x: auto; max-height: 250px; font-size: 13px; border: 1px solid #ddd; white-space: pre-wrap; word-break: break-word; }
+    .scroll-box {overflow-x:auto;background:#181920;color:#eee;padding:10px;border-radius:5px;font-size:13px;font-family:monospace;max-width:100%;box-shadow:0 1px 4px #222;}
+    .theme-toggle { padding:6px 16px;border-radius:6px;border:none;background:#23272e;color:#fff;font-weight:bold;cursor:pointer; }
+    body.dark { background: #181920; color: #eee; }
+    .dark .box { background: #23272e; }
+    .dark .summary-table th, .dark .summary-table td { background: #181920; color: #eee; border-color: #444;}
+    .dark pre { background: #23272e; color: #eee; border-color: #444;}
+    #toolbar {position:sticky;top:0;z-index:999;display:flex;justify-content:flex-end;align-items:center;padding:18px 10px 8px 10px;background:inherit;gap:14px;}
   </style>
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+  </script>
 </head>
 <body>
-<h1>Android Security Audit Report</h1>
+<!-- Top Toolbar: Sticky, right-aligned, search + theme toggle -->
+<div id="toolbar">
+  <input id="searchInput" type="text" placeholder="🔍 Search findings..." 
+         style="width: 250px; padding: 8px 12px; border-radius: 8px; border: 1px solid #bbb; font-size: 15px; margin-right:2px;">
+  <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+</div>
+
+<h1 style="margin-top:18px;">Android Security Audit Report</h1>
 <p><strong>Generated:</strong> $(date '+%Y-%m-%d %H:%M:%S')</p>
 <div style="float:right; width:250px;"><canvas id="summaryChart" width="250" height="250"></canvas></div>
 <script>
@@ -72,39 +103,26 @@ if ! adb get-state 1>/dev/null 2>&1; then
 fi
 
 # === DEVICE INFO COLLECTION ===
-model=$(adb shell getprop ro.product.model | tr -d '
-')
-brand=$(adb shell getprop ro.product.brand | tr -d '
-')
-manufacturer=$(adb shell getprop ro.product.manufacturer | tr -d '
-')
-name=$(adb shell getprop ro.product.name | tr -d '
-')
-soc_manufacturer=$(adb shell getprop ro.soc.manufacturer | tr -d '
-')
-soc_model=$(adb shell getprop ro.soc.model | tr -d '
-')
-android_version=$(adb shell getprop ro.build.version.release | tr -d '
-')
-sdk_level=$(adb shell getprop ro.build.version.sdk | tr -d '
-')
-build_id=$(adb shell getprop ro.build.display.id | tr -d '
-')
-fingerprint=$(adb shell getprop ro.build.fingerprint | tr -d '
-')
-serialno=$(adb shell getprop ro.serialno | tr -d '
-')
-[[ -z "$serialno" ]] && serialno=$(adb shell getprop ro.boot.serialno | tr -d '
-')
-timezone=$(adb shell getprop persist.sys.timezone | tr -d '
-')
+model=$(adb shell getprop ro.product.model | tr -d '\r')
+brand=$(adb shell getprop ro.product.brand | tr -d '\r')
+manufacturer=$(adb shell getprop ro.product.manufacturer | tr -d '\r')
+name=$(adb shell getprop ro.product.name | tr -d '\r')
+soc_manufacturer=$(adb shell getprop ro.soc.manufacturer | tr -d '\r')
+soc_model=$(adb shell getprop ro.soc.model | tr -d '\r')
+android_version=$(adb shell getprop ro.build.version.release | tr -d '\r')
+sdk_level=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+build_id=$(adb shell getprop ro.build.display.id | tr -d '\r')
+fingerprint=$(adb shell getprop ro.build.fingerprint | tr -d '\r')
+serialno=$(adb shell getprop ro.serialno | tr -d '\r')
+[[ -z "$serialno" ]] && serialno=$(adb shell getprop ro.boot.serialno | tr -d '\r')
+timezone=$(adb shell getprop persist.sys.timezone | tr -d '\r')
 
 # TXT Report Output
 echo -e "Model: $model\nBrand: $brand\nManufacturer: $manufacturer\nName: $name\nSoC Manufacturer: $soc_manufacturer\nSoC Model: $soc_model\nAndroid Version: $android_version\nSDK Level: $sdk_level\nBuild ID: $build_id\nFingerprint: $fingerprint\nSerial Number: $serialno\nTimezone: $timezone" >> "$txt_file"
 
 # HTML Report Output
 cat <<EOF >> "$html_file"
-<h2>📱 Device Information</h2>
+<h2>Device Information</h2>
 <div class="box info">
   <ul style="list-style: none; padding-left: 0;">
     <li><strong>Model:</strong> $model</li>
@@ -125,48 +143,63 @@ EOF
 
 # Check Function
 evaluate_check() {
-  local category="$1"
-  local label="$2"
-  local command="$3"
-  local safe_pattern="$4"
-  local level="$5"
-  local desc="$6"
+    local category="$1"
+    local label="$2"
+    local command="$3"
+    local safe_pattern="$4"
+    local level="$5"
+    local desc="$6"
 
-  result=$(adb shell "$command" 2>/dev/null | tr -d '
-')
-  [[ -z "$result" ]] && result="[Not Supported]"
+    result=$(adb shell "$command" 2>/dev/null | tr -d '\r')
+    [[ -z "$result" ]] && result="[Not Supported]"
 
-  echo -e "\n# === $category ===\nCheck: $label\nCommand: $command\nDescription: $desc\nResult: $result" >> "$txt_file"
+    echo -e "
+# === $category ===
+Check: $label
+Command: $command
+Description: $desc
+Result: $result" >> "$txt_file"
 
-  echo "<div class='box'>" >> "$html_file"
-  echo "<h3>$category - $label</h3>" >> "$html_file"
-  echo "<p><strong>Command:</strong> <code>$command</code></p>" >> "$html_file"
-  echo "<p><strong>Description:</strong> $desc</p>" >> "$html_file"
-  echo "<p><strong>Result:</strong></p><pre>$result</pre>" >> "$html_file"
+    echo "<section>" >> "$html_file"
+    echo "<h3>$category - $label</h3>" >> "$html_file"
+    echo "<p><strong>Description:</strong> $desc</p>" >> "$html_file"
+    echo "<p><strong>Command:</strong></p><pre><code>$command</code></pre>" >> "$html_file"
 
-  if [[ "$result" == "[Not Supported]" ]]; then
-    echo "<div class='box info'><strong>Status:</strong> INFO</div></div>" >> "$html_file"
-    return
-  fi
+    # Special rendering for Open Ports check
+    if [[ "$category" == "NETWORK & FILESYSTEM" && "$label" == "Open External Ports" ]]; then
+        echo '<p><strong>Result:</strong></p>' >> "$html_file"
+        echo '<div class="scroll-box">' >> "$html_file"
+        echo "<pre style='margin:0;white-space:pre;'>$result</pre>" >> "$html_file"
+        echo '</div>' >> "$html_file"
+    else
+        echo "<p><strong>Result:</strong></p><pre><code>$result</code></pre>" >> "$html_file"
+    fi
 
-  if [[ "$result" =~ $safe_pattern ]]; then
-    echo "<div class='box safe'><strong>Status:</strong> SAFE</div></div>" >> "$html_file"
-    ((safe_count++))
-  else
-    case "$level" in
-      critical)
-        echo "<div class='box critical'><strong>Status:</strong> CRITICAL</div></div>" >> "$html_file"
-        ((critical_count++))
-        ;;
-      warning)
-        echo "<div class='box warning'><strong>Status:</strong> WARNING</div></div>" >> "$html_file"
-        ((warning_count++))
-        ;;
-      *)
-        echo "<div class='box info'><strong>Status:</strong> INFO</div></div>" >> "$html_file"
-        ;;
-    esac
-  fi
+    if [[ "$result" == "[Not Supported]" ]]; then
+        echo "<div class='box info'><strong>Status:</strong> INFO</div>" >> "$html_file"
+        echo "</section><hr>" >> "$html_file"
+        return
+    fi
+
+    if [[ "$result" =~ $safe_pattern ]]; then
+        echo "<div class='box safe'><strong>Status:</strong> SAFE</div>" >> "$html_file"
+        ((safe_count++))
+    else
+        case "$level" in
+            critical)
+                echo "<div class='box critical'><strong>Status:</strong> CRITICAL</div>" >> "$html_file"
+                ((critical_count++))
+                ;;
+            warning)
+                echo "<div class='box warning'><strong>Status:</strong> WARNING</div>" >> "$html_file"
+                ((warning_count++))
+                ;;
+            *)
+                echo "<div class='box info'><strong>Status:</strong> INFO</div>" >> "$html_file"
+                ;;
+        esac
+    fi
+    echo "</section><hr>" >> "$html_file"
 }
 
 # === SECURITY CHECKS ===
@@ -176,6 +209,12 @@ evaluate_check() {
 evaluate_check "USER & PRIVACY" "Screen Lock" "dumpsys keyguard | grep 'secure=true'" "secure=true" "critical" "Screen lock must be enabled"
 evaluate_check "USER & PRIVACY" "Clipboard Access" "cmd clipboard get-primary-clip" "^$" "safe" "Check if clipboard has sensitive data"
 evaluate_check "USER & PRIVACY" "Location Services" "settings get secure location_mode" "^3$" "safe" "Mode 3 means high-accuracy enabled"
+evaluate_check "USER & PRIVACY" "Show passwords disabled" "settings get system show_password" "0" "medium" "Password characters must not be shown"
+evaluate_check "USER & PRIVACY" "Clipboard History" "dumpsys clipboard | grep 'Historical'" "^$" "warning" "Clipboard history should be disabled to prevent data leaks"
+evaluate_check "USER & PRIVACY" "Biometric Strength" "dumpsys biometric | grep 'Strength='" "STRONG" "warning" "Biometric auth should be 'STRONG' (not 'WEAK')"
+evaluate_check "USER & PRIVACY" "Backup Allowed" "settings get global backup_enabled" "0" "warning" "Auto-backup should be disabled for sensitive apps"
+evaluate_check "USER & PRIVACY" "Fingerprint / Setup Complete" "settings get secure user_setup_complete" "^1$" "info" "Check if device setup is complete"
+evaluate_check "USER & PRIVACY" "Trust Agents Enabled" "settings get secure enabled_trust_agents" "^$" "warning" "May allow unlock bypass via smart lock"
 
 # BOOT & SECURITY
 evaluate_check "BOOT & SECURITY" "Verified Boot State" "getprop ro.boot.verifiedbootstate" "^green$" "critical" "Should be green for locked bootloader"
@@ -204,6 +243,9 @@ evaluate_check "NETWORK & FILESYSTEM" "DNS Servers" "getprop net.dns1" ".*" "inf
 evaluate_check "NETWORK & FILESYSTEM" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Certs could bypass pinning"
 evaluate_check "NETWORK & FILESYSTEM" "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {} \; 2>/dev/null | wc -l" "^0$" "critical" "Privilege escalation vectors"
 evaluate_check "NETWORK & FILESYSTEM" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "Unprotected sensitive files"
+evaluate_check "NETWORK" "Wi-Fi Security (WPA3)" "dumpsys wifi | grep 'WPA3-'" "WPA3" "warning" "WPA3 should be preferred over WPA2 for stronger Wi-Fi security"
+evaluate_check "NETWORK" "Open IPv6 Ports" "netstat -tuln | grep '::'" "^$" "critical" "No open IPv6 ports should be exposed"
+evaluate_check "NETWORK" "DNS-over-TLS Enabled" "settings get global private_dns_mode" "hostname" "info" "DNS-over-TLS (DoT) should be enabled for encrypted DNS"
 
 # ADDITIONAL SECURITY
 evaluate_check "ADDITIONAL SECURITY" "Play Protect" "settings get secure package_verifier_enable" "^1$" "warning" "Play Protect should be enabled"
@@ -215,6 +257,7 @@ evaluate_check "ADDITIONAL SECURITY" "Logcat Access" "getprop ro.debuggable" "^0
 evaluate_check "ADDITIONAL SECURITY" "Unusual Files in /sdcard/" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Sensitive files in user-accessible storage"
 evaluate_check "ADDITIONAL SECURITY" "Wi-Fi SSID" "dumpsys netstats | grep -i 'iface=wlan0'" ".*" "info" "Shows current Wi-Fi network"
 evaluate_check "ADDITIONAL SECURITY" "Zygote Process Check" "ps | grep zygote" "zygote" "critical" "Zygote process is core to Android app lifecycle"
+evaluate_check "INPUT SECURITY" "No 3rd party keyboards installed" "ime list -a" "no 3rd party" "medium" "Only system keyboards must be installed"
 
 # APP & SYSTEM INTEGRITY
 evaluate_check "APP & SYSTEM INTEGRITY" "AppOps: private-data access" "dumpsys appops | grep -E 'READ_EXTERNAL_STORAGE|ACCESS_FINE_LOCATION'" "mode=ignore" "safe" "Monitor unexpected accesses to sensitive data"
@@ -227,33 +270,52 @@ evaluate_check "APP & SYSTEM INTEGRITY" "APK Signature Path Check" "pm list pack
 # BOOTLOADER & AVB
 evaluate_check "BOOT & SECURITY" "Bootloader Locked" "getprop ro.boot.flash.locked" "^1$" "critical" "1 means locked bootloader; 0 means unlocked"
 evaluate_check "BOOT & SECURITY" "AVB Version" "getprop ro.boot.avb_version" ".*" "info" "Android Verified Boot version info"
+evaluate_check "BOOTLOADER" "Fastboot Unlock Allowed" "getprop ro.oem_unlock_supported" "0" "critical" "Fastboot OEM unlock must be disabled"
 
 # KERNEL & SYSTEM
 evaluate_check "SYSTEM" "Kernel Version" "uname -r" ".*" "info" "Kernel build/version details"
 evaluate_check "SYSTEM" "Audit Logs Enabled" "cat /proc/sys/kernel/printk" ".*" "warning" "Non-zero values indicate audit logs may be active"
+evaluate_check "SYSTEM" "ASLR Enabled" "cat /proc/sys/kernel/randomize_va_space" "2" "critical" "ASLR must be enabled (value 2) to randomize memory layout and protect against memory-based attacks."
+evaluate_check "SYSTEM" "KASLR Enabled" "dmesg | grep -i kaslr" ".*enabled.*" "critical" "Kernel Address Space Layout Randomization (KASLR) should be enabled to randomize kernel memory layout."
+evaluate_check "SYSTEM" "NX (No eXecute) Bit Enabled" "dmesg | grep -i NX" ".*NX.*protection.*" "critical" "NX bit must be enabled to prevent execution of code in data memory regions."
+evaluate_check "SYSTEM" "Core Dumps Disabled" "cat /proc/sys/kernel/core_pattern" "|/dev/null" "high" "Core dumps should be disabled to prevent sensitive data leakage."
+evaluate_check "SYSTEM" "SECCOMP Enabled" "zcat /proc/config.gz | grep CONFIG_SECCOMP=" "CONFIG_SECCOMP=Y" "high" "SECCOMP must be enabled to restrict the system calls available to applications."
+evaluate_check "SYSTEM" "Kernel Modules Loading Restricted" "cat /proc/sys/kernel/modules_disabled" "1" "high" "Kernel module loading should be disabled after boot to prevent unauthorized module insertion."
+evaluate_check "SYSTEM" "Protected Symlinks Enabled" "cat /proc/sys/fs/protected_symlinks" "1" "medium" "Symlink protection should be enabled to prevent symlink-based privilege escalation."
+evaluate_check "SYSTEM" "Protected Hardlinks Enabled" "cat /proc/sys/fs/protected_hardlinks" "1" "medium" "Hardlink protection should be enabled to prevent unauthorized file access."
+evaluate_check "SYSTEM" "dmesg Restriction Enabled" "cat /proc/sys/kernel/dmesg_restrict" "1" "medium" "Restricting dmesg access prevents unprivileged users from reading kernel logs."
+evaluate_check "SYSTEM" "Audit Logs Enabled" "cat /proc/sys/kernel/printk" ".*" "warning" "Non-zero printk values may indicate that audit logs are active. Review logging configuration."
+evaluate_check "MEMORY" "Stack Canaries" "zcat /proc/config.gz | grep CONFIG_CC_STACKPROTECTOR_STRONG" "CONFIG_CC_STACKPROTECTOR_STRONG=y" "critical" "Stack canaries should be enabled to prevent buffer overflows"
+evaluate_check "MEMORY" "ROP Mitigation (PAC)" "zcat /proc/config.gz | grep CONFIG_ARM64_PTR_AUTH" "CONFIG_ARM64_PTR_AUTH=y" "critical" "Pointer Authentication (PAC) should be enabled to prevent ROP attacks"
+evaluate_check "MEMORY" "Memory Tagging (MTE)" "zcat /proc/config.gz | grep CONFIG_ARM64_MTE" "CONFIG_ARM64_MTE=y" "critical" "Memory Tagging Extension (MTE) should be enabled for JIT hardening"
+evaluate_check "KERNEL" "Kernel Hardening (PAN/UAO)" "zcat /proc/config.gz | grep -E 'CONFIG_ARM64_PAN=|CONFIG_ARM64_UAO='" "CONFIG_ARM64_PAN=y.*CONFIG_ARM64_UAO=y" "critical" "Privileged Access Never (PAN) and User Access Override (UAO) should be enabled for memory protection"
+evaluate_check "KERNEL" "Kernel Pointer Leaking" "cat /proc/sys/kernel/kptr_restrict" "2" "high" "Kernel pointers should not be exposed (2 = full restriction)"
+evaluate_check "SELinux" "SELinux Denials" "dmesg | grep 'avc:  denied'" "^$" "warning" "Check for SELinux policy violations"
 
 # PACKAGE AUDIT
 evaluate_check "APPS & RUNTIME" "Frida Detected" "pm list packages | grep frida" "^$" "critical" "Frida binary indicates runtime manipulation"
 evaluate_check "APPS & RUNTIME" "Magisk Detected" "pm list packages | grep magisk" "^$" "critical" "Magisk can hide root access"
 evaluate_check "APPS & RUNTIME" "Xposed Framework" "pm list packages | grep xposed" "^$" "critical" "Xposed framework enables deep system tweaks"
 evaluate_check "APPS & RUNTIME" "Unapproved APKs in /data/local/tmp" "ls /data/local/tmp/*.apk" "^ls:.*No such file or directory$" "warning" "Unauthorized sideloading or testing APKs"
+evaluate_check "APPS" "Debuggable Apps (Strict)" "pm list packages -d | grep -v 'com.android'" "^$" "critical" "No non-system apps should be debuggable"
+evaluate_check "APPS" "APK Signature Verification" "dumpsys package verification | grep 'verified=true'" "verified=true" "critical" "APK signatures must be verified"
+evaluate_check "APPS" "Dynamic Code Loading" "pm list packages | grep -E 'dexopt|dynamic'" "^$" "warning" "Apps should not use dynamic code loading (security risk)"
 
 # NETWORK ENHANCEMENTS
 evaluate_check "NETWORK" "ARP Table Dump" "cat /proc/net/arp" ".*" "info" "Lists resolved ARP IP-MAC mappings"
 evaluate_check "NETWORK" "Proxy Configuration" "settings get global http_proxy" "^$" "warning" "Proxy set may indicate MITM or forced redirection"
 evaluate_check "NETWORK" "Captive Portal Detection" "settings get global captive_portal_mode" "^1$" "warning" "Should be 1 (default); 0 disables captive portal checks"
 
-# DEVICE SECURITY
-evaluate_check "USER & PRIVACY" "Fingerprint / Setup Complete" "settings get secure user_setup_complete" "^1$" "info" "Check if device setup is complete"
-evaluate_check "USER & PRIVACY" "Trust Agents Enabled" "settings get secure enabled_trust_agents" "^$" "warning" "May allow unlock bypass via smart lock"
-
 # ROOT TRACE
 evaluate_check "ROOT TRACE" "Magisk Binary Presence" "ls /sbin | grep magisk" "^$" "critical" "Indicates root hiding tools like Magisk are installed"
 evaluate_check "ROOT TRACE" "su Binary in Common Paths" "ls /system/xbin/su /system/bin/su 2>/dev/null" "^ls:.*No such file or directory$" "critical" "su binary indicates rooted device"
 
-# FILESYSTEM & MOUNTS
+# FILESYSTEM & MOUNTS & STORAGE
 evaluate_check "FILESYSTEM" "Mount Points (rw/ro)" "mount | grep -E ' rw| ro'" ".*" "info" "Review mounted partitions and access permissions"
 evaluate_check "FILESYSTEM" "tmpfs Usage" "mount | grep tmpfs" ".*" "info" "Shows use of temporary memory file system"
+evaluate_check "STORAGE" "External Storage Encryption" "getprop ro.crypto.volume.filenames_mode" "aes-256-cts" "warning" "External storage filenames should be encrypted"
+evaluate_check "FILESYSTEM" "World-Readable Files" "find /data -type f -perm -o+r -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "No sensitive files should be world-readable"
+evaluate_check "FILESYSTEM" "SQLite DB Permissions" "find /data/data -name '*.db' -exec ls -l {} \; 2>/dev/null | grep -v 'rw-------'" "^$" "warning" "SQLite databases should not be world-readable/writable"
 
 # ADB SECURITY
 evaluate_check "ADB SECURITY" "ADB Keys Present" "ls /data/misc/adb/adb_keys" "^ls:.*No such file or directory$" "warning" "Presence of adb_keys may indicate previously trusted host"
@@ -268,12 +330,31 @@ evaluate_check "MALWARE SCAN" "Suspicious SDCard Files" "ls /sdcard/ | grep -Ei 
 evaluate_check "MALWARE SCAN" "Non-System Apps Count" "pm list packages -3 | wc -l" ".*" "info" "Apps installed outside system image"
 
 # Additional CHECKS CIS 
-evaluate_check "USB File Transfer Disabled" "settings get global usb_mass_storage_enabled 2>/dev/null" "^0$" "warning" "Should be disabled to block unauthorized USB file access"
-evaluate_check "Development Settings Disabled" "settings get global development_settings_enabled 2>/dev/null" "^0$" "warning" "Developer mode should be disabled for production devices"
-evaluate_check "Wi-Fi Direct Disabled (WFD)" "pm list packages 2>/dev/null | grep -i wfd" "^$" "warning" "Wi-Fi Direct (WFD) package should be removed if unused"
-evaluate_check "Auto System Update Enabled" "settings get global auto_update_system 2>/dev/null" "^1$" "info" "Auto updates improve patch consistency"
-evaluate_check "Credential Storage Cleared" "ls /data/misc/keystore/user_0 2>&1" "No such file or directory" "info" "No residual user credential files"
+evaluate_check "CHECKS CIS" "USB File Transfer Disabled" "settings get global usb_mass_storage_enabled 2>/dev/null" "^0$" "warning" "Should be disabled to block unauthorized USB file access"
+evaluate_check "CHECKS CIS" "Development Settings Disabled" "settings get global development_settings_enabled 2>/dev/null" "^0$" "warning" "Developer mode should be disabled for production devices"
+evaluate_check "CHECKS CIS" "Wi-Fi Direct Disabled (WFD)" "pm list packages 2>/dev/null | grep -i wfd" "^$" "warning" "Wi-Fi Direct (WFD) package should be removed if unused"
+evaluate_check "CHECKS CIS" "Auto System Update Enabled" "settings get global auto_update_system 2>/dev/null" "^1$" "info" "Auto updates improve patch consistency"
+evaluate_check "CHECKS CIS" "Credential Storage Cleared" "ls /data/misc/keystore/user_0 2>&1" "No such file or directory" "info" "No residual user credential files"
 
+# ============================================== #
+# BLUETOOTH SECURITY CHECKS (NIST COMPLIANT)     #
+# ============================================== #
+evaluate_check "BLUETOOTH" "Bluetooth Enabled" "settings get global bluetooth_on" "^0$" "warning" "NIST recommends disabling Bluetooth when not in use (SC-8)"
+evaluate_check "BLUETOOTH" "Discoverable Mode" "settings get global bluetooth_discoverability" "^0$" "critical" "Device should not be discoverable (AC-18)"
+evaluate_check "BLUETOOTH" "Secure Pairing Mode" "dumpsys bluetooth_manager | grep 'Pairing mode:'" "Pairing mode:.*Secure" "critical" "Only secure pairing modes should be allowed (NIST IA-2)"
+evaluate_check "BLUETOOTH" "Bluetooth Encryption" "dumpsys bluetooth_manager | grep 'Encryption:'" "Encryption:.*Enabled" "critical" "Bluetooth encryption must be enabled (SC-13)"
+evaluate_check "BLUETOOTH" "Authentication Required" "dumpsys bluetooth_manager | grep 'Authentication:'" "Authentication:.*Required" "critical" "Authentication must be required for pairing (IA-2)"
+evaluate_check "BLUETOOTH" "MAC Randomization" "settings get secure bluetooth_address | grep -E '([0-9A-F]{2}:){5}[0-9A-F]{2}'" "^$" "warning" "Static MAC addresses should be avoided (SC-8(1))"
+evaluate_check "BLUETOOTH" "Paired Devices Count" "dumpsys bluetooth_manager | grep 'Bonded devices:' -A 10 | grep 'Device:' | wc -l" "^0$" "warning" "Review all paired devices (AC-3)"
+evaluate_check "BLUETOOTH" "HCI Snoop Logging" "settings get secure bluetooth_hci_log" "^0$" "info" "HCI logging should be disabled in production (AU-12)"
+evaluate_check "BLUETOOTH" "Unnecessary Profiles" "dumpsys bluetooth_manager | grep 'Profile:' | grep -vE 'A2DP|HFP|HSP'" "^$" "warning" "Disable unused profiles (CM-7)"
+evaluate_check "BLUETOOTH" "LE Security Mode" "dumpsys bluetooth_manager | grep 'LE Security Mode:'" "LE Security Mode: [2-4]" "critical" "LE should use Mode 2 (Secure Connections) or higher (SC-13)"
+
+evaluate_check "NETWORK & FILESYSTEM" "Open External Ports" \
+"netstat -tuln | awk '\$4 !~ /127\.0\.0\.1/ && \$4 !~ /::1/ {print}'" \
+"^$" "critical" "No open TCP/UDP ports externally accessible (excluding localhost)."
+
+# ... (all your other checks from previous script go here) ...
 
 # Replace placeholders in HTML
 sed -i "s/SAFE_COUNT/$safe_count/; s/WARNING_COUNT/$warning_count/; s/CRITICAL_COUNT/$critical_count/" "$html_file"
@@ -287,6 +368,16 @@ cat <<EOF >> "$html_file"
   <tr><td>Warning</td><td>$warning_count</td></tr>
   <tr><td>Critical</td><td>$critical_count</td></tr>
 </table>
+<script>
+document.getElementById("searchInput").addEventListener("input", function() {
+    let query = this.value.trim().toLowerCase();
+    let sections = document.querySelectorAll("section");
+    sections.forEach(function(section) {
+        let text = section.innerText.toLowerCase();
+        section.style.display = query === "" || text.includes(query) ? "" : "none";
+    });
+});
+</script>
 </body>
 </html>
 EOF
