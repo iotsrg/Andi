@@ -105,15 +105,6 @@ Open the HTML file in any modern browser for full dashboard features!
 
 ---
 
-## 🔧 How It Works
-
-1. **ADB Connection** – Verifies device presence.
-2. **Device Info Gathering** – Robust fallbacks ensure no field is ever blank.
-3. **Security Checks** – Runs each test, classifies, and color-codes the result.
-4. **Reporting** – Outputs TXT (for automation/CLI) and HTML (for presentation/sharing).
-
----
-
 ## 👨‍💻 Customization
 
 - **Add More Checks**:  
