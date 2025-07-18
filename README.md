@@ -53,15 +53,20 @@ This tool inspects **device security posture** using ADB with **zero modificatio
 
 ## 📚 Checks Performed
 
-| Category         | Description                                      |
-|------------------|--------------------------------------------------|
-| **Boot & Device**| Verified Boot, OEM Unlock, Flash Lock, Encryption |
-| **Apps & Runtime**| Debuggable, Admins, Accessibility, APKs         |
-| **Root & Bypass**| Magisk, su, Xposed, Frida                        |
-| **Network Stack**| Open Ports, DNS, Proxy, Captive Portal           |
-| **File System**  | SUID, World-Writable, tmpfs, mount flags         |
-| **User Privacy** | Lock screen, Trust Agents, Location, ADB keys    |
-| **System Health**| Kernel version, Zygote check, Process snapshot   |
+| Section         | Checks (Examples)                                | Methods Used               |
+| --------------- | ------------------------------------------------ | -------------------------- |
+| Device Info     | Model, Brand, Android Version, SoC, etc          | `adb shell getprop ...`    |
+| User & Privacy  | Locks, Biometrics, Clipboard, Backups            | Settings & dumpsys queries |
+| Boot & Security | Verified Boot, Encryption, Debugging, FRP        | getprop/settings, SELinux  |
+| Apps & Runtime  | Root, Debuggable, Device Admins                  | pm, dumpsys                |
+| Network/FS      | Open Ports, World-Writable Files, SUID/SGID      | netstat, find, ls, getprop |
+| Integrity       | AppOps, Custom CA, APK Signature                 | dumpsys, pm, ls            |
+| Kernel/Memory   | ASLR, KASLR, Stack Canary, NX, ROP, SECCOMP      | dmesg, zcat, cat /proc     |
+| Bluetooth       | NIST 800-121, encryption, pairing, MAC, profiles | dumpsys, settings          |
+| Malware         | Suspicious APKs/Packages/Files                   | pm, ls, grep               |
+| CIS Checks      | USB/File Transfer, Dev Settings, Updates         | settings, pm, ls           |
+| Root Traces     | su, magisk, xposed detection                     | ls, pm                     |
+
 
 ---
 
