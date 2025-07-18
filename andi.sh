@@ -381,6 +381,7 @@ evaluate_check "CHECKS CIS" "Credential Storage Cleared" "ls /data/misc/keystore
 # ============================================== #
 # BLUETOOTH SECURITY CHECKS (NIST COMPLIANT)     #
 # ============================================== #
+
 evaluate_check "BLUETOOTH" "Bluetooth Enabled" "settings get global bluetooth_on" "^0$" "warning" "NIST recommends disabling Bluetooth when not in use (SC-8)"
 evaluate_check "BLUETOOTH" "Discoverable Mode" "settings get global bluetooth_discoverability" "^0$" "critical" "Device should not be discoverable (AC-18)"
 evaluate_check "BLUETOOTH" "Secure Pairing Mode" "dumpsys bluetooth_manager | grep 'Pairing mode:'" "Pairing mode:.*Secure" "critical" "Only secure pairing modes should be allowed (NIST IA-2)"
@@ -391,6 +392,12 @@ evaluate_check "BLUETOOTH" "Paired Devices Count" "dumpsys bluetooth_manager | g
 evaluate_check "BLUETOOTH" "HCI Snoop Logging" "settings get secure bluetooth_hci_log" "^0$" "info" "HCI logging should be disabled in production (AU-12)"
 evaluate_check "BLUETOOTH" "Unnecessary Profiles" "dumpsys bluetooth_manager | grep 'Profile:' | grep -vE 'A2DP|HFP|HSP'" "^$" "warning" "Disable unused profiles (CM-7)"
 evaluate_check "BLUETOOTH" "LE Security Mode" "dumpsys bluetooth_manager | grep 'LE Security Mode:'" "LE Security Mode: [2-4]" "critical" "LE should use Mode 2 (Secure Connections) or higher (SC-13)"
+evaluate_check "BLUETOOTH" "Bluetooth Version" "getprop ro.bluetooth.version" "^[5-9]|[1-9][0-9]" "info" "Bluetooth version should be 5.0 or newer for enhanced security features (SC-13)"
+evaluate_check "BLUETOOTH" "Just Works Pairing" "dumpsys bluetooth_manager | grep -i 'Just Works'" "^$" "critical" "Just Works insecure pairing method should not be enabled (IA-2)"
+evaluate_check "BLUETOOTH" "Link Key Strength" "dumpsys bluetooth_manager | grep -i 'Key Length'" "128" "critical" "Link encryption key length must be at least 128 bits (IA-5)"
+evaluate_check "BLUETOOTH" "Bluetooth Debugging Interface" "dumpsys bluetooth_manager | grep -i 'Debug.*true'" "^$" "critical" "Bluetooth debugging interfaces must be disabled in production (CM-6)"
+evaluate_check "BLUETOOTH" "Secure Simple Pairing (SSP)" "dumpsys bluetooth_manager | grep 'Secure Simple Pairing:'" "Secure Simple Pairing: Enabled" "critical" "Secure Simple Pairing should be enabled to avoid legacy insecure pairing methods (IA-2)"
+
 
 # ... (all your other checks from previous script go here) ...
 
