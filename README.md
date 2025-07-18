@@ -1,5 +1,5 @@
 
-# ANDISCAN – Android Security Audit Script
+# ANDI – Android Inspector
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-blue)](#)
@@ -7,7 +7,7 @@
 
 ---
 
-**AndiScan** is an advanced, fully open-source, automated Android device security audit toolkit built in Bash.  
+**Andi** is an advanced, fully open-source, automated Android device security audit toolkit built in Bash.  
 It combines deep device and OS inspection (CIS, NIST, custom) with beautiful, interactive HTML reporting for security, research, and compliance.
 
 ---
