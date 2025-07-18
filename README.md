@@ -58,7 +58,6 @@ chmod +x andi.sh
 ```
 
 > Output files will be created in `android_audit_output/` as TXT and HTML.
-<img width="1923" height="798" alt="Screenshot from 2025-07-18 16-21-12" src="https://github.com/user-attachments/assets/f0408e72-7da8-497d-85da-66b96c4a1b3a" />
 
 ---
 
@@ -102,6 +101,7 @@ chmod +x andi.sh
 - **HTML Report**: `android_audit_output/html_report_<timestamp>/audit_report.html`
 
 Open the HTML file in any modern browser for full dashboard features!
+<img width="1923" height="798" alt="Screenshot from 2025-07-18 16-21-12" src="https://github.com/user-attachments/assets/f0408e72-7da8-497d-85da-66b96c4a1b3a" />
 
 ---
 
