@@ -1,6 +1,6 @@
 
 # ANDI – Android Inspector
-<img width="1024" height="1024" alt="andi" src="https://github.com/user-attachments/assets/3d7fd106-aec1-4dea-b4cf-bac280d3fdd8" />
+<img width="240" height="220" alt="andi" src="https://github.com/user-attachments/assets/3d7fd106-aec1-4dea-b4cf-bac280d3fdd8" />
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-blue)](#)
