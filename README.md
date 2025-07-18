@@ -1,57 +1,83 @@
-# 🤖 Andi - Android Inspector 
 
-**Andi** is a no-root, portable Android security auditing tool that inspects Android smartphones, tablets, and smart devices over ADB.
+# ANDISCAN – Android Security Audit Script
 
-[![Platform](https://img.shields.io/badge/platform-Android-blue)](https://developer.android.com/)
-[![ADB Required](https://img.shields.io/badge/ADB-Required-green)](https://developer.android.com/studio/command-line/adb)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Shell Script](https://img.shields.io/badge/language-Bash-lightgrey)](https://www.gnu.org/software/bash/)
-[![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)]()
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux-blue)](#)
+[![Status](https://img.shields.io/badge/status-Active-brightgreen)](#)
 
-A powerful and extensible **Android Security Auditing Script** designed for penetration testers, red teams, forensic analysts, and IoT security professionals.
+---
 
-This tool inspects **device security posture** using ADB with **zero modifications or app installations**.
+**AndiScan** is an advanced, fully open-source, automated Android device security audit toolkit built in Bash.  
+It combines deep device and OS inspection (CIS, NIST, custom) with beautiful, interactive HTML reporting for security, research, and compliance.
 
 ---
 
 ## ✨ Features
 
-- 📱 Device & SoC fingerprinting
-- 🔐 Bootloader, encryption, and Verified Boot checks
-- ⚠️ Root, Magisk, Xposed & Frida detection
-- 🧠 App runtime configuration & dangerous permission checks
-- 🌐 Network, proxy, open port & captive portal detection
-- 🗂️ Filesystem audit for `SUID`, world-writable & `tmpfs`
-- 🔒 SELinux, ADB Keys, USB Debugging, Safe Mode analysis
-- 📈 Auto-generated TXT and HTML reports with chart visualizations
+- **CLI and Modern HTML Dashboard Reporting**  
+  - Interactive HTML report with sticky toolbar (search & dark mode)
+  - Pie/doughnut chart summary, clean color-coded sections
+- **Zero-Blank Device Info**  
+  - Robust fallback for device, SoC, and build details (never empty!)
+- **Comprehensive Audit Coverage**  
+  - User & Privacy, Boot, System/Kernel, Apps, Network, Bluetooth, Filesystem, CIS, NIST 800-121 checks, and more!
+- **Portable, Fast, and Read-Only**  
+  - Works on all ADB-accessible Androids (root not required for most checks)
 
 ---
 
-## 🚀 Usage
+## 🚀 Quick Start
+
+### 1. **Clone and Download**
 
 ```bash
-
+git clone https://github.com/iotsrg/Andi.git
+cd Andi
 ```
 
-> 🔌 Make sure a device is connected and authorized via ADB before running.
+Or [**Download andi.sh**](https://github.com/iotsrg/Andi/raw/main/andi.sh) directly:
+
+```bash
+curl -LO https://github.com/iotsrg/Andi/raw/main/andi.sh
+chmod +x andi.sh
+```
+
+### 2. **Requirements**
+
+- **Linux** (tested on Ubuntu, Debian, Fedora, Kali, etc.)
+- [**ADB**](https://developer.android.com/tools/adb) (Android Debug Bridge):
+  ```bash
+  sudo apt install android-tools-adb
+  ```
+- Android device with **USB debugging enabled**
+
+### 3. **Run the Audit**
+
+```bash
+./andi.sh
+```
+
+> Output files will be created in `android_audit_output/` as TXT and HTML.
 
 ---
 
-## 📂 Output
+## 📊 HTML Report Preview
 
-- All reports are stored under the `android_audit_output/` folder:
-  - ✅ `txt_report_<timestamp>/audit_report.txt`
-  - 🌐 `html_report_<timestamp>/audit_report.html` (with Chart.js visualization)
+- **Sticky top toolbar** with instant search and dark/light mode toggle
+- **Summary chart** of findings (safe/warning/critical)
+- **Device info** (never blank!)
+- **All findings**, grouped and color-coded, with code/command/output
+- **Live filter/search** for rapid triage
+
+<!-- Optionally add a screenshot if you have one!
+<p align="center">
+  <img src="assets/andiscan_html_report_screenshot.png" width="800" alt="AndiScan HTML report preview"/>
+</p>
+-->
 
 ---
 
-## 📋 Example Output (HTML)
-
-![audit-html-preview](https://i.imgur.com/XvW7qJd.png)
-
----
-
-## 📚 Checks Performed
+## 🛡️ Checks Included
 
 | Section         | Checks (Examples)                                | Methods Used               |
 | --------------- | ------------------------------------------------ | -------------------------- |
@@ -67,44 +93,61 @@ This tool inspects **device security posture** using ADB with **zero modificatio
 | CIS Checks      | USB/File Transfer, Dev Settings, Updates         | settings, pm, ls           |
 | Root Traces     | su, magisk, xposed detection                     | ls, pm                     |
 
+---
+
+## 📝 Output Files
+
+- **TXT Report**: `android_audit_output/txt_report_<timestamp>/audit_report.txt`
+- **HTML Report**: `android_audit_output/html_report_<timestamp>/audit_report.html`
+
+Open the HTML file in any modern browser for full dashboard features!
 
 ---
 
-## 🔒 Security Philosophy
+## 🔧 How It Works
 
-This tool follows the **non-invasive, read-only** principle. It does not install apps, write files to the device, or require root unless explicitly requested.
-
----
-
-## 🧠 Ideal Use Cases
-
-- Android smartphone audits
-- IoT device Android firmware testing
-- Pre-deployment enterprise validation
-- Mobile app security posture verification
+1. **ADB Connection** – Verifies device presence.
+2. **Device Info Gathering** – Robust fallbacks ensure no field is ever blank.
+3. **Security Checks** – Runs each test, classifies, and color-codes the result.
+4. **Reporting** – Outputs TXT (for automation/CLI) and HTML (for presentation/sharing).
 
 ---
 
-## 🛠 Requirements
+## 👨‍💻 Customization
 
-- `adb` installed and accessible from terminal
-- Bash-compatible environment (Linux/macOS/WSL)
-- Android device with USB debugging enabled
-
----
-
-## 🧩 Optional Enhancements (Planned)
-
-- [ ] Frida-assisted runtime fuzzing
-- [ ] OTA/bootloader image comparison (offline)
-- [ ] PDF report generation
+- **Add More Checks**:  
+  Insert new `evaluate_check` lines in `andi.sh`:
+  ```bash
+  evaluate_check "<CATEGORY>" "<LABEL>" "<ADB_COMMAND>" "<SAFE_REGEX>" "<LEVEL>" "<DESCRIPTION>"
+  ```
+- **Branding/Style**:  
+  Edit the CSS/HTML in the script for logos, colors, or layouts.
 
 ---
 
-## 📄 License
+## ❗ Limitations
 
-This project is licensed under the [MIT License](LICENSE).
+- Some checks require root or special permissions.
+- Device must have ADB debugging enabled.
+- Certain very locked-down or vendor-modified devices may return limited data.
 
 ---
 
-> _“If you can't audit it, you can't trust it.” — Unknown_
+## 🤝 Contributing
+
+Pull requests welcome!  
+Feel free to fork, enhance, or open issues for ideas and bugfixes.
+
+---
+
+## 📜 License
+
+MIT License – see [LICENSE](LICENSE)
+
+---
+
+## 🏷️ Credits
+
+Built with ❤️ by [IoTSRG Team](https://iotsrg.org/) 
+
+---
