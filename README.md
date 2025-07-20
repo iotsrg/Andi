@@ -10,6 +10,7 @@
 
 **Andi** is an advanced, fully open-source, automated Android device security audit toolkit built in Bash.  
 It combines deep device and OS inspection (CIS, NIST, custom) with beautiful, interactive HTML reporting for security, research, and compliance.
+As we saw so many IoT/Smart/Connected/Automotive/etc things are running on Android OS , created this checks for immediate assessment. 
 
 ---
 
