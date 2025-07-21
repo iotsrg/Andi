@@ -295,7 +295,7 @@ evaluate_check "NETWORK-IPV4" "Potentially Vulnerable UDP Ports (IPv4)" "netstat
 
 #evaluate_check "NETWORK-IPV6" "Open IPv6 Ports" "netstat -tuln | grep '::'" "^$" "critical" "No open IPv6 ports should be exposed"
 
-evaluate_check "NETWORK" "Open TCP Ports (IPv6, excluding localhost)" "netstat -lntp | awk '\$1 == \"tcp6\" && \$6 == \"LISTEN\" && \$4 !~ /::1/'" "^\s*$" "info" "Open TCP ports (IPv6) found that are not restricted to localhost (::1)"
+evaluate_check "NETWORK-IPV6" "All Active TCP Connections (IPv6, excluding ::1)" "netstat -ntp | awk '\$1 == \"tcp6\" && \$4 !~ /::1/ { print \$0 }'" "^\s*$" "info" "Displays all active IPv6 TCP connections (including LISTEN/ESTABLISHED) that are not bound to loopback (::1)"
 
 evaluate_check "NETWORK-IPV6" "Common TCP Ports Exposed (IPv6, Warning)" "netstat -lnpt | awk '\$1 == \"tcp6\" && \$6 == \"LISTEN\" && \$4 ~ /:((53)|(80)|(25)|(110)|(143)|(465)|(587)|(993)|(995)|(8080)|(8443)|(22))$/ && \$4 !~ /::1/'" "^\s*$" "warning" "One or more common TCP ports are externally accessible on IPv6 — review exposure"
 
