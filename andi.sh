@@ -244,8 +244,6 @@ Result: $result" >> "$txt_file"
 # === SECURITY CHECKS ===
 # (Paste your existing evaluate_check lines here!)
 
-# === SECURITY CHECKS ===
-# Truncated the rest for clarity. You can append your existing checks block below here.
 
 # USER & PRIVACY
 evaluate_check "USER & PRIVACY" "Screen Lock" "dumpsys keyguard | grep 'secure=true'" "secure=true" "critical" "Screen lock must be enabled"
