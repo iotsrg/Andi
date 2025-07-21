@@ -267,6 +267,9 @@ evaluate_check "BOOT & SECURITY" "Device Debuggable" "getprop ro.debuggable" "^0
 evaluate_check "BOOT & SECURITY" "Safe Mode" "getprop persist.sys.safemode" "^0$" "info" "Should not be running in Safe Mode"
 evaluate_check "BOOT & SECURITY" "FRP Policy" "settings get global frp_policy" "^1$" "critical" "Factory Reset Protection should be enabled"
 evaluate_check "BOOT & SECURITY" "ADB Over Wi-Fi" "settings get global adb_wifi_enabled" "^0$" "warning" "Risky if enabled"
+evaluate_check "BOOT & SECURITY" "Bootloader Locked" "getprop ro.boot.flash.locked" "^1$" "critical" "1 means locked bootloader; 0 means unlocked"
+evaluate_check "BOOT & SECURITY" "AVB Version" "getprop ro.boot.avb_version" ".*" "info" "Android Verified Boot version info"
+evaluate_check "BOOTLOADER" "Fastboot Unlock Allowed" "getprop ro.oem_unlock_supported" "0" "critical" "Fastboot OEM unlock must be disabled"
 
 # APPS & RUNTIME
 evaluate_check "APPS & RUNTIME" "Root Access (su)" "which su" "^$" "critical" "Check for root binaries"
@@ -275,17 +278,45 @@ evaluate_check "APPS & RUNTIME" "Accessibility Services" "settings get secure en
 evaluate_check "APPS & RUNTIME" "Device Admin Apps" "dumpsys device_policy | grep 'Admin:' | wc -l" "^0$" "warning" "Admins may have control"
 evaluate_check "APPS & RUNTIME" "Running Services Count" "dumpsys activity services | grep -E 'package|process' | wc -l" ".*" "info" "Running services on device"
 
-# NETWORK & FILESYSTEM
-evaluate_check "NETWORK & FILESYSTEM" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "critical" "No open TCP/UDP ports"
-evaluate_check "NETWORK & FILESYSTEM" "Open TCP Ports (excluding localhost)" "netstat -lntp | grep -v 127.0.0.1" "^\s*$" "critical" "No open TCP ports externally accessible"
-evaluate_check "NETWORK & FILESYSTEM" "Open UDP Ports (excluding localhost)" "netstat -lnup | grep -v 127.0.0.1" "^\s*$" "critical" "No open UDP ports externally accessible"
-evaluate_check "NETWORK & FILESYSTEM" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
-evaluate_check "NETWORK & FILESYSTEM" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Certs could bypass pinning"
-evaluate_check "NETWORK & FILESYSTEM" "SUID/SGID Binaries" "find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -ld {} \; 2>/dev/null | wc -l" "^0$" "critical" "Privilege escalation vectors"
-evaluate_check "NETWORK & FILESYSTEM" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "Unprotected sensitive files"
+# NETWORK 
+# evaluate_check "NETWORK" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "info" "No open TCP/UDP ports"
+
+evaluate_check "NETWORK-IPV4" "All Active TCP Connections (IPv4)" "netstat -lntp | awk '\$1 == \"tcp\" && \$4 ~ /^[0-9.]+:/ { print \$0 }'" "^\s*$" "info" "Lists all IPv4 TCP connections including localhost — use for full socket audit"
+
+evaluate_check "NETWORK-IPV4" "Common TCP Ports Exposed (IPv4, Warning)" "netstat -lnpt | awk '\$1 == \"tcp\" && \$6 == \"LISTEN\" && \$4 ~ /:((53)|(80)|(25)|(110)|(143)|(465)|(587)|(993)|(995)|(8080)|(8443)|(22))$/ && \$4 !~ /^127\\./'" "^\s*$" "warning" "One or more common TCP ports are externally accessible on IPv4 — review exposure"
+
+evaluate_check "NETWORK-IPV4" "Expanded Critical TCP Ports (excluding SSH) Listening or External (IPv4)" "netstat -lnpt | awk '\$1 == \"tcp\" && \$6 == \"LISTEN\" && \$4 ~ /:((21)|(23)|(25)|(445)|(3306)|(5432)|(5555)|(5900)|(5901)|(3389)|(5555)|(4444)|(8080)|(8443)|(41795))$/ && \$4 !~ /^127\\./'" "^\s*$" "critical" "One or more critical TCP ports (excluding SSH) are open or externally connected (IPv4) — review exposure"
+
+evaluate_check "NETWORK-IPV4" "Open UDP Ports (IPv4, excluding localhost)" "netstat -lnup | awk '\$1 == \"udp\" && \$4 !~ /^127\\./'" "^\s*$" "info" "Open UDP ports (IPv4) found that are not restricted to localhost"
+
+evaluate_check "NETWORK-IPV4" "UDP Ports 123, 161, 162, 5353 Open (IPv4)" "netstat -lnup | awk '\$1 == \"udp\" && \$4 ~ /:(123|161|162|5353)\$/ && \$4 !~ /^127\\./ { print \$4 }'" "^\s*$" "warning" "UDP Ports 123 (NTP), UDP ports 161 (SNMP), 162 (Trap), or 5353 (mDNS) are exposed on IPv4 — may leak device or service data"
+
+evaluate_check "NETWORK-IPV4" "Potentially Vulnerable UDP Ports (IPv4)" "netstat -lnup | awk '\$1 == \"udp\" && \$4 ~ /:(69|1900|500|4500|520)\$/ && \$4 !~ /^127\\./ { print \$4 }'" "^\s*$" "critical" "One or more UDP ports (e.g., 69/TFTP, 1900/SSDP, 67/68/DHCP) are exposed on IPv4 — potentially vulnerable services detected"
+
+#evaluate_check "NETWORK-IPV6" "Open IPv6 Ports" "netstat -tuln | grep '::'" "^$" "critical" "No open IPv6 ports should be exposed"
+
+evaluate_check "NETWORK" "Open TCP Ports (IPv6, excluding localhost)" "netstat -lntp | awk '\$1 == \"tcp6\" && \$6 == \"LISTEN\" && \$4 !~ /::1/'" "^\s*$" "info" "Open TCP ports (IPv6) found that are not restricted to localhost (::1)"
+
+evaluate_check "NETWORK-IPV6" "Common TCP Ports Exposed (IPv6, Warning)" "netstat -lnpt | awk '\$1 == \"tcp6\" && \$6 == \"LISTEN\" && \$4 ~ /:((53)|(80)|(25)|(110)|(143)|(465)|(587)|(993)|(995)|(8080)|(8443)|(22))$/ && \$4 !~ /::1/'" "^\s*$" "warning" "One or more common TCP ports are externally accessible on IPv6 — review exposure"
+
+evaluate_check "NETWORK-IPV6" "Expanded Critical TCP Ports (excluding SSH) Listening or External (IPv6)" "netstat -lnpt | awk '\$1 == \"tcp6\" && \$6 == \"LISTEN\" && \$4 ~ /:((21)|(23)|(25)|(445)|(3306)|(5432)|(5900)|(5901)|(3389)|(5555)|(4444)|(8080)|(8443)|(41795))$/ && \$4 !~ /::1/'" "^\s*$" "critical" "One or more critical TCP ports (excluding SSH) are open or externally connected (IPv6) — review exposure"
+
+evaluate_check "NETWORK-IPV6" "Open UDP Ports (IPv6, excluding localhost)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 !~ /::1/'" "^\s*$" "info" "Open UDP ports (IPv6) found that are not restricted to localhost (::1)"
+
+evaluate_check "NETWORK-IPV6" "UDP Ports 123, 161, 162, 5353 Open (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(123|161|162|5353)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "warning" "UDP Ports 123 (NTP), UDP ports 161 (SNMP), 162 (Trap), or 5353 (mDNS) are exposed on IPv6 — may leak device or service data"
+
+evaluate_check "NETWORK-IPV6" "Potentially Vulnerable UDP Ports (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(69|1900|500|4500|520)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "critical" "One or more UDP ports (e.g., 69/TFTP, 1900/SSDP) are exposed on IPv6 — potentially vulnerable services detected"
+
+
+evaluate_check "NETWORK" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
+evaluate_check "NETWORK" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Certs could bypass pinning"
+evaluate_check "NETWORK" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "Unprotected sensitive files"
 evaluate_check "NETWORK" "Wi-Fi Security (WPA3)" "dumpsys wifi | grep 'WPA3-'" "WPA3" "warning" "WPA3 should be preferred over WPA2 for stronger Wi-Fi security"
-evaluate_check "NETWORK" "Open IPv6 Ports" "netstat -tuln | grep '::'" "^$" "critical" "No open IPv6 ports should be exposed"
 evaluate_check "NETWORK" "DNS-over-TLS Enabled" "settings get global private_dns_mode" "hostname" "info" "DNS-over-TLS (DoT) should be enabled for encrypted DNS"
+evaluate_check "NETWORK" "ARP Table Dump" "cat /proc/net/arp" ".*" "info" "Lists resolved ARP IP-MAC mappings"
+evaluate_check "NETWORK" "Proxy Configuration" "settings get global http_proxy" "^$" "warning" "Proxy set may indicate MITM or forced redirection"
+evaluate_check "NETWORK" "Captive Portal Detection" "settings get global captive_portal_mode" "^1$" "warning" "Should be 1 (default); 0 disables captive portal checks"
+
 
 # ADDITIONAL SECURITY
 evaluate_check "ADDITIONAL SECURITY" "Play Protect" "settings get secure package_verifier_enable" "^1$" "warning" "Play Protect should be enabled"
@@ -306,11 +337,6 @@ evaluate_check "APP & SYSTEM INTEGRITY" "Custom CAs Installed" "ls /data/misc/us
 evaluate_check "APP & SYSTEM INTEGRITY" "APK Signature Path Check" "pm list packages -f | grep .apk | head -n 1" "package:" "info" "Checks for valid APK path info"
 
 # === ADVANCED CHECKS ===
-
-# BOOTLOADER & AVB
-evaluate_check "BOOT & SECURITY" "Bootloader Locked" "getprop ro.boot.flash.locked" "^1$" "critical" "1 means locked bootloader; 0 means unlocked"
-evaluate_check "BOOT & SECURITY" "AVB Version" "getprop ro.boot.avb_version" ".*" "info" "Android Verified Boot version info"
-evaluate_check "BOOTLOADER" "Fastboot Unlock Allowed" "getprop ro.oem_unlock_supported" "0" "critical" "Fastboot OEM unlock must be disabled"
 
 # KERNEL & SYSTEM
 evaluate_check "SYSTEM" "Kernel Version" "uname -r" ".*" "info" "Kernel build/version details"
@@ -340,11 +366,6 @@ evaluate_check "APPS & RUNTIME" "Unapproved APKs in /data/local/tmp" "ls /data/l
 evaluate_check "APPS" "Debuggable Apps (Strict)" "pm list packages -d | grep -v 'com.android'" "^$" "critical" "No non-system apps should be debuggable"
 evaluate_check "APPS" "APK Signature Verification" "dumpsys package verification | grep 'verified=true'" "verified=true" "critical" "APK signatures must be verified"
 evaluate_check "APPS" "Dynamic Code Loading" "pm list packages | grep -E 'dexopt|dynamic'" "^$" "warning" "Apps should not use dynamic code loading (security risk)"
-
-# NETWORK ENHANCEMENTS
-evaluate_check "NETWORK" "ARP Table Dump" "cat /proc/net/arp" ".*" "info" "Lists resolved ARP IP-MAC mappings"
-evaluate_check "NETWORK" "Proxy Configuration" "settings get global http_proxy" "^$" "warning" "Proxy set may indicate MITM or forced redirection"
-evaluate_check "NETWORK" "Captive Portal Detection" "settings get global captive_portal_mode" "^1$" "warning" "Should be 1 (default); 0 disables captive portal checks"
 
 # ROOT TRACE
 evaluate_check "ROOT TRACE" "Magisk Binary Presence" "ls /sbin | grep magisk" "^$" "critical" "Indicates root hiding tools like Magisk are installed"
