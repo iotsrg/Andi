@@ -255,6 +255,11 @@ evaluate_check "USER & PRIVACY" "Biometric Strength" "dumpsys biometric | grep '
 evaluate_check "USER & PRIVACY" "Backup Allowed" "settings get global backup_enabled" "0" "warning" "Auto-backup should be disabled for sensitive apps"
 evaluate_check "USER & PRIVACY" "Fingerprint / Setup Complete" "settings get secure user_setup_complete" "^1$" "info" "Check if device setup is complete"
 evaluate_check "USER & PRIVACY" "Trust Agents Enabled" "settings get secure enabled_trust_agents" "^$" "warning" "May allow unlock bypass via smart lock"
+evaluate_check "USER & PRIVACY" "Microphone Usage" "dumpsys media.audio_flinger | grep -i active" "^$" "info" "Detects open microphones"
+evaluate_check "USER & PRIVACY" "Camera Usage" "dumpsys media.camera | grep -i client" "^$" "info" "Detects active camera clients"
+evaluate_check "USER & PRIVACY" "Sensors in Use" "dumpsys sensorservice | grep 'active' | grep -v '0'" "^$" "info" "Shows currently used sensors"
+evaluate_check "USER & PRIVACY" "Network Telemetry" "settings get global usage_reporting_enabled" "^0$" "safe" "Should be disabled unless required"
+
 
 # BOOT & SECURITY
 evaluate_check "BOOT & SECURITY" "Verified Boot State" "getprop ro.boot.verifiedbootstate" "^green$" "critical" "Should be green for locked bootloader"
@@ -277,6 +282,12 @@ evaluate_check "APPS & RUNTIME" "Debuggable Apps" "pm list packages -d | wc -l" 
 evaluate_check "APPS & RUNTIME" "Accessibility Services" "settings get secure enabled_accessibility_services" "^$" "warning" "Keylogging/clickjacking risk"
 evaluate_check "APPS & RUNTIME" "Device Admin Apps" "dumpsys device_policy | grep 'Admin:' | wc -l" "^0$" "warning" "Admins may have control"
 evaluate_check "APPS & RUNTIME" "Running Services Count" "dumpsys activity services | grep -E 'package|process' | wc -l" ".*" "info" "Running services on device"
+evaluate_check "APPS" "Suspicious APK Names" "pm list packages | grep -Ei 'hacker|spy|monitor|remote|keylog|shell'" "^$" "critical" "Packages with suspicious names"
+evaluate_check "ROOT" "Systemless Root Path" "ls /sbin | grep magisk" "^$" "critical" "Magisk binary indicates systemless root"
+evaluate_check "FRIDA" "Frida Server Listening" "ps | grep frida-server" "^$" "critical" "Frida server process found"
+
+
+
 
 # NETWORK 
 # evaluate_check "NETWORK" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "info" "No open TCP/UDP ports"
@@ -330,15 +341,21 @@ evaluate_check "ADDITIONAL SECURITY" "Wi-Fi SSID" "dumpsys netstats | grep -i 'i
 evaluate_check "ADDITIONAL SECURITY" "Zygote Process Check" "ps | grep zygote" "zygote" "critical" "Zygote process is core to Android app lifecycle"
 evaluate_check "INPUT SECURITY" "No 3rd party keyboards installed" "ime list -a" "no 3rd party" "medium" "Only system keyboards must be installed"
 
-# APP & SYSTEM INTEGRITY
+# APP & SYSTEM INTEGRITY & STORAGE & LOGS
 evaluate_check "APP & SYSTEM INTEGRITY" "AppOps: private-data access" "dumpsys appops | grep -E 'READ_EXTERNAL_STORAGE|ACCESS_FINE_LOCATION'" "mode=ignore" "safe" "Monitor unexpected accesses to sensitive data"
 evaluate_check "APP & SYSTEM INTEGRITY" "Security Tools Detected" "pm list packages | grep -E 'org.mobsf|com.offsec.nethunter|de.robv.android.xposed'" "^$" "warning" "Pentest frameworks or hacking tools found"
 evaluate_check "APP & SYSTEM INTEGRITY" "Custom CAs Installed" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Custom certs may bypass pinning"
 evaluate_check "APP & SYSTEM INTEGRITY" "APK Signature Path Check" "pm list packages -f | grep .apk | head -n 1" "package:" "info" "Checks for valid APK path info"
+evaluate_check "STORAGE" "Hidden or Extra Partitions" "cat /proc/partitions | grep -Ev 'mmcblk0p[0-9]+|sda[0-9]+'" "^$" "info" "Detects non-standard or extra partitions"
+evaluate_check "STORAGE" "SDCard Mount RW" "mount | grep /sdcard | grep rw" "^$" "warning" "SDCard should not be mounted read-write in restricted environments"
+evaluate_check "STORAGE" "Orphaned Files in /data" "find /data -type f -uid 0 ! -user system 2>/dev/null | wc -l" "^0$" "info" "Looks for files owned by root but not by 'system' user"
+evaluate_check "LOGS" "Recent Kernel Crashes" "dmesg | grep -iE 'fatal|panic|oops|BUG:' | tail -n 5" "^$" "info" "Recent kernel panics or fatal errors"
+evaluate_check "LOGS" "Application Crash Log" "logcat -d -b crash | head -n 10" "^$" "info" "Recent app crash logs (look for repeated exceptions)"
+evaluate_check "LOGS" "SELinux AVC Denials" "dmesg | grep 'avc:  denied'" "^$" "warning" "Check for any denied SELinux actions"
 
 # === ADVANCED CHECKS ===
 
-# KERNEL & SYSTEM
+# KERNEL & SYSTEM & Trusted Security Modules
 evaluate_check "SYSTEM" "Kernel Version" "uname -r" ".*" "info" "Kernel build/version details"
 evaluate_check "SYSTEM" "Audit Logs Enabled" "cat /proc/sys/kernel/printk" ".*" "warning" "Non-zero values indicate audit logs may be active"
 evaluate_check "SYSTEM" "ASLR Enabled" "cat /proc/sys/kernel/randomize_va_space" "2" "critical" "ASLR must be enabled (value 2) to randomize memory layout and protect against memory-based attacks."
@@ -357,6 +374,15 @@ evaluate_check "MEMORY" "Memory Tagging (MTE)" "zcat /proc/config.gz | grep CONF
 evaluate_check "KERNEL" "Kernel Hardening (PAN/UAO)" "zcat /proc/config.gz | grep -E 'CONFIG_ARM64_PAN=|CONFIG_ARM64_UAO='" "CONFIG_ARM64_PAN=y.*CONFIG_ARM64_UAO=y" "critical" "Privileged Access Never (PAN) and User Access Override (UAO) should be enabled for memory protection"
 evaluate_check "KERNEL" "Kernel Pointer Leaking" "cat /proc/sys/kernel/kptr_restrict" "2" "high" "Kernel pointers should not be exposed (2 = full restriction)"
 evaluate_check "SELinux" "SELinux Denials" "dmesg | grep 'avc:  denied'" "^$" "warning" "Check for SELinux policy violations"
+evaluate_check "TEE/TPM" "TEE Driver Presence" "ls /dev/tee* /dev/teepriv* 2>/dev/null" "^ls:.*No such file or directory$" "warning" "TEE driver (Trusted Execution Environment) should exist on modern secure devices"
+evaluate_check "TEE/TPM" "TPM Keystore Presence" "ls /system/lib64/hw/keystore.* 2>/dev/null" "^ls:.*No such file or directory$" "info" "Checks for hardware-backed keystore modules"
+evaluate_check "TEE/TPM" "TEE Vendor Prop" "getprop | grep -i tee" ".*" "info" "Shows any TEE-related properties"
+evaluate_check "INTEGRITY" "Test-keys Build" "getprop ro.build.fingerprint" "release-keys" "critical" "Test-keys in fingerprint indicates insecure engineering/debug build"
+evaluate_check "INTEGRITY" "Boot Image Tampered" "ls -l /init /init.rc" ".*" "info" "Check for unusual file sizes or dates"
+evaluate_check "INTEGRITY" "System Partition Tampering" "lsattr /system/bin/app_process* 2>/dev/null" ".*" "info" "Detects immutability or possible tampering"
+evaluate_check "PATCHING" "Security Patch Age" "getprop ro.build.version.security_patch" "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" "warning" "Compare patch date to current date (flag >90 days as critical manually)"
+evaluate_check "PATCHING" "OTA Update Path" "getprop ro.build.version.incremental" ".*" "info" "OTA incremental version for build tracking"
+
 
 # PACKAGE AUDIT
 evaluate_check "APPS & RUNTIME" "Frida Detected" "pm list packages | grep frida" "^$" "critical" "Frida binary indicates runtime manipulation"
@@ -380,14 +406,24 @@ evaluate_check "FILESYSTEM" "SQLite DB Permissions" "find /data/data -name '*.db
 
 # ADB SECURITY
 evaluate_check "ADB SECURITY" "ADB Keys Present" "ls /data/misc/adb/adb_keys" "^ls:.*No such file or directory$" "warning" "Presence of adb_keys may indicate previously trusted host"
+evaluate_check "ADB TRUST" "ADB Over Network Port" "getprop service.adb.tcp.port" "^$" "safe" "Should be empty or disabled; non-default = risk"
+evaluate_check "DEBUGGING" "System Debug Binaries" "ls /system/bin/gdbserver /system/bin/strace 2>/dev/null" "^ls:.*No such file or directory$" "warning" "Presence of debug tools increases attack surface"
 
 # PROCESS SNAPSHOT
 evaluate_check "PROCESS SNAPSHOT" "Top 5 Running Processes" "ps | head -n 5" ".*" "info" "Initial list of active processes"
 
+
+# ============================================== #
+# VULNERABILITY CHECKS                           #
+# ============================================== #
+
+evaluate_check "PATH ABUSE" "Writable Paths in \$PATH" "echo \$PATH | tr ':' '\n' | xargs -I{} sh -c 'test -w {} && echo {}'" "^$" "critical" "Writable dirs in PATH can lead to privilege escalation"
+
+
 # MALWARE CHECKS
 evaluate_check "MALWARE SCAN" "Suspicious Packages" "pm list packages | grep -Ei 'spy|inject|keylog|steal|remote|sms|trojan'" "^$" "critical" "Flag suspicious package names"
 evaluate_check "MALWARE SCAN" "Temp APKs in /data/local/tmp" "ls /data/local/tmp/*.apk" "^ls:.*No such file or directory$" "warning" "Hidden payloads or test malware"
-evaluate_check "MALWARE SCAN" "Suspicious SDCard Files" "ls /sdcard/ | grep -Ei '(key|creds|dump|log|backup)'" "^$" "warning" "Suspicious files stored externally"
+evaluate_check "MALWARE & SENSITIVE DATA SCAN" "Sensitive/Malicious Files (Recursive)" "find /sdcard/ -type f -iregex '.*\(key\|creds\|dump\|log\|backup\|conf\|config\|token\|password\|secret\|payload\|exploit\|malware\|trojan\|root\|hack\|shell\|spy\|\.apk\|\.dex\|\.so\|\.elf\|\.sh\|\.exe\|\.bat\)$'" "^$" "warning" "Finds files on external storage commonly linked to leaks or malware (recursively)."
 evaluate_check "MALWARE SCAN" "Non-System Apps Count" "pm list packages -3 | wc -l" ".*" "info" "Apps installed outside system image"
 
 # Additional CHECKS CIS 
@@ -415,7 +451,30 @@ evaluate_check "BLUETOOTH" "Bluetooth Version" "getprop ro.bluetooth.version" "^
 evaluate_check "BLUETOOTH" "Just Works Pairing" "dumpsys bluetooth_manager | grep -i 'Just Works'" "^$" "critical" "Just Works insecure pairing method should not be enabled (IA-2)"
 evaluate_check "BLUETOOTH" "Link Key Strength" "dumpsys bluetooth_manager | grep -i 'Key Length'" "128" "critical" "Link encryption key length must be at least 128 bits (IA-5)"
 evaluate_check "BLUETOOTH" "Bluetooth Debugging Interface" "dumpsys bluetooth_manager | grep -i 'Debug.*true'" "^$" "critical" "Bluetooth debugging interfaces must be disabled in production (CM-6)"
-evaluate_check "BLUETOOTH" "Secure Simple Pairing (SSP)" "dumpsys bluetooth_manager | grep 'Secure Simple Pairing:'" "Secure Simple Pairing: Enabled" "critical" "Secure Simple Pairing should be enabled to avoid legacy insecure pairing methods (IA-2)"
+evaluate_check "BLUETOOTH" "Secure Simple Pairing (SSP)" "dumpsys bluetooth_manager 2>/dev/null | grep -iq 'Secure Simple Pairing.*Enabled' && echo Enabled || echo Disabled" "Enabled" "critical" "Checks if SSP is enabled (downgrade attacks like KNOB are prevented)."
+evaluate_check "BLUETOOTH" "Bluedroid Stack Active" "[ \"\$(getprop ro.bluetooth.stack 2>/dev/null | grep -i bluedroid)\" ] && echo VULNERABLE || echo SAFE" "SAFE" "critical" "Detects if Bluedroid stack is active (BlueBorne vulnerable; upgrade to Fluoride recommended)."
+evaluate_check "BLUETOOTH" "Bluetooth Firmware Files" "ls /vendor/firmware/bluetooth* /system/etc/firmware/bluetooth* 2>/dev/null | wc -l" "^[1-9][0-9]*$" "warning" "Checks for signed Bluetooth firmware blobs (missing may mean tampering or custom build)."
+evaluate_check "BLUETOOTH" "Raw Radio Device Nodes" "ls /dev/radio* /dev/hci* 2>/dev/null | wc -l" "^0$" "critical" "Exposes low-level radio nodes. Presence may indicate increased attack surface."
+evaluate_check "BLUETOOTH" "bluetoothd Hardening" "(ps -A -o cmd 2>/dev/null | grep -E 'bluetoothd|bluetooth' | grep -q -- '-n') && echo HARDENED || echo UNPROTECTED" "HARDENED" "warning" "Checks if the Bluetooth daemon runs in hardened (no-privilege) mode."
+evaluate_check "BLUETOOTH" "BR/EDR Secure Connections" "settings get global bluetooth_br_edr_secure_connections 2>/dev/null | grep -q '^1$' && echo Enforced || echo NotEnforced" "Enforced" "critical" "Should return 'Enforced' to guarantee strong encryption (prevents KNOB attack)."
+evaluate_check "BLUETOOTH" "SELinux Bluetooth Policy" "(ls -Z /system/bin/bluetooth* 2>/dev/null | grep -q 'bluetooth:s0') && echo RESTRICTIVE || echo PERMISSIVE" "RESTRICTIVE" "warning" "SELinux domain for Bluetooth should be restrictive to prevent privilege escalation."
+evaluate_check "BLUETOOTH" "BLE MAC Randomization" "VAR=\$(settings get global bluetooth_address_rotation_enabled 2>/dev/null); if [ -z \"\$VAR\" ]; then echo NotSupported; elif [ \"\$VAR\" = \"1\" ]; then echo Enabled; else echo Disabled; fi" "Enabled" "info" "Should be enabled to randomize BLE MAC (prevents device tracking/leakage)."
+evaluate_check "BLUETOOTH" "Legacy Bluetooth Profiles" "dumpsys bluetooth_manager | grep -E 'OBEX|PAN|SAP'" "^$" "warning" "Legacy profiles can expose device to known CVEs—disable if not needed."
+evaluate_check "BLUETOOTH" "Custom Vendor Bluetooth Binaries" "ls /vendor/lib*/hw/bluetooth* /system/lib*/hw/bluetooth* 2>/dev/null | wc -l" "^[1-9][0-9]*$" "info" "Lists vendor or custom Bluetooth libraries (review for supply chain risk)."
+evaluate_check "BLUETOOTH" "Bluetooth Stack Version" "dumpsys package com.android.bluetooth | grep versionName" ".*" "info" "Review the version of the Bluetooth stack package."
+evaluate_check "BLUETOOTH" "Bluetooth Service Crashes" "logcat -d -b crash | grep -i bluetooth | tail -n 5" "^$" "info" "Recent crashes in Bluetooth stack may indicate exploits or instability."
+evaluate_check "BLUETOOTH" "Scan Always Available" "settings get global ble_scan_always_enabled" "^0$" "warning" "Should be disabled to prevent background BLE scanning (privacy risk)."
+evaluate_check "BLUETOOTH" "Apps with BLUETOOTH Permission" "pm list permissions -g -d | grep -A1 'BLUETOOTH$' | grep -c 'package:'" "^[1-3]$" "warning" "Too many apps with BLUETOOTH permission increases risk."
+evaluate_check "BLUETOOTH" "Bluetooth Debug Properties" "getprop | grep -i bluetooth | grep -i debug" "^$" "info" "Debug properties for Bluetooth should not be set on production."
+
+
+
+# ============================================== #
+# VULNERABILITY CHECKS                           #
+# ============================================== #
+
+evaluate_check "PATH ABUSE" "Writable Paths in \$PATH" "echo \$PATH | tr ':' '\n' | xargs -I{} sh -c 'test -w {} && echo {}'" "^$" "critical" "Writable dirs in PATH can lead to privilege escalation"
+
 
 
 # ... (all your other checks from previous script go here) ...
