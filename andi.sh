@@ -287,8 +287,6 @@ evaluate_check "ROOT" "Systemless Root Path" "ls /sbin | grep magisk" "^$" "crit
 evaluate_check "FRIDA" "Frida Server Listening" "ps | grep frida-server" "^$" "critical" "Frida server process found"
 
 
-
-
 # NETWORK 
 # evaluate_check "NETWORK" "Open Ports" "netstat -tuln | grep -E '0.0.0.0|::'" "^\s*$" "info" "No open TCP/UDP ports"
 
@@ -317,8 +315,6 @@ evaluate_check "NETWORK-IPV6" "Open UDP Ports (IPv6, excluding localhost)" "nets
 evaluate_check "NETWORK-IPV6" "UDP Ports 123, 161, 162, 5353 Open (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(123|161|162|5353)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "warning" "UDP Ports 123 (NTP), UDP ports 161 (SNMP), 162 (Trap), or 5353 (mDNS) are exposed on IPv6 — may leak device or service data"
 
 evaluate_check "NETWORK-IPV6" "Potentially Vulnerable UDP Ports (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(69|1900|500|4500|520)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "critical" "One or more UDP ports (e.g., 69/TFTP, 1900/SSDP) are exposed on IPv6 — potentially vulnerable services detected"
-
-
 evaluate_check "NETWORK" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
 evaluate_check "NETWORK" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Certs could bypass pinning"
 evaluate_check "NETWORK" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "Unprotected sensitive files"
