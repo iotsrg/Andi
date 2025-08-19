@@ -63,7 +63,7 @@ get_prop_fallback_with_cpuinfo() {
 cat <<EOF > "$html_file"
 <html>
 <head>
-  <title>Android Security Audit Report</title>
+  <title>Security Audit Report</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f4; padding: 20px; transition:background 0.3s,color 0.3s;}
@@ -98,7 +98,7 @@ cat <<EOF > "$html_file"
   <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
 </div>
 
-<h1 style="margin-top:18px;">Android Security Audit Report</h1>
+<h1 style="margin-top:18px;">Security Audit Report</h1>
 <p><strong>Generated:</strong> $(date '+%Y-%m-%d %H:%M:%S')</p>
 <div style="float:right; width:250px;"><canvas id="summaryChart" width="250" height="250"></canvas></div>
 <script>
