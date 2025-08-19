@@ -315,6 +315,7 @@ evaluate_check "NETWORK-IPV6" "Open UDP Ports (IPv6, excluding localhost)" "nets
 evaluate_check "NETWORK-IPV6" "UDP Ports 123, 161, 162, 5353 Open (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(123|161|162|5353)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "warning" "UDP Ports 123 (NTP), UDP ports 161 (SNMP), 162 (Trap), or 5353 (mDNS) are exposed on IPv6 — may leak device or service data"
 
 evaluate_check "NETWORK-IPV6" "Potentially Vulnerable UDP Ports (IPv6)" "netstat -lnup | awk '\$1 == \"udp6\" && \$4 ~ /:(69|1900|500|4500|520)\$/ && \$4 !~ /::1/ { print \$4 }'" "^\s*$" "critical" "One or more UDP ports (e.g., 69/TFTP, 1900/SSDP) are exposed on IPv6 — potentially vulnerable services detected"
+
 evaluate_check "NETWORK" "DNS Servers" "getprop net.dns1" ".*" "info" "Check DNS configs"
 evaluate_check "NETWORK" "User Certs" "ls /data/misc/user/0/cacerts-added/ | wc -l" "^0$" "warning" "Certs could bypass pinning"
 evaluate_check "NETWORK" "World-Writable Files" "find /data -type f \( -perm -o+w \) -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "Unprotected sensitive files"
@@ -400,6 +401,37 @@ evaluate_check "STORAGE" "External Storage Encryption" "getprop ro.crypto.volume
 evaluate_check "FILESYSTEM" "World-Readable Files" "find /data -type f -perm -o+r -exec ls -l {} \; 2>/dev/null | wc -l" "^0$" "critical" "No sensitive files should be world-readable"
 evaluate_check "FILESYSTEM" "SQLite DB Permissions" "find /data/data -name '*.db' -exec ls -l {} \; 2>/dev/null | grep -v 'rw-------'" "^$" "warning" "SQLite databases should not be world-readable/writable"
 
+# --- BOOTLOADER & POLICY ---
+evaluate_check "BOOTLOADER & POLICY" "Bootloader Locked" "getprop ro.boot.flash.locked" "^(1|true)$" "critical" "Bootloader must be locked"
+evaluate_check "BOOTLOADER & POLICY" "OEM Unlock Disabled (Global Setting)" "settings get global oem_unlock_allowed 2>/dev/null" "^0$" "high" "OEM unlock should be disallowed by policy (0)"
+evaluate_check "BOOTLOADER & POLICY" "FRP Partition Path Set" "getprop ro.frp.pst" "^/.+" "info" "Factory Reset Protection partition path configured"
+
+# --- AVB (Android Verified Boot) ---
+evaluate_check "AVB" "Verified Boot State" "getprop ro.boot.verifiedbootstate" "^green$" "critical" "AVB verifiedbootstate must be green"
+evaluate_check "AVB" "vbmeta Device State" "getprop ro.boot.vbmeta.device_state" "^locked$" "critical" "vbmeta device_state must be locked"
+evaluate_check "AVB" "AVB Version Present" "getprop ro.boot.avb_version" "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" "info" "AVB version should be present"
+evaluate_check "AVB" "vbmeta Digest Present (cmdline)" "grep -q 'androidboot.vbmeta.digest=' /proc/cmdline && echo present || echo absent" "^present$" "info" "vbmeta digest present in kernel cmdline"
+evaluate_check "AVB" "Verified Boot State (cmdline)" "grep -o 'androidboot.verifiedbootstate=[^ ]*' /proc/cmdline | cut -d= -f2" "^green$" "high" "Kernel cmdline indicates green state"
+evaluate_check "AVB" "vbmeta Device State (cmdline)" "grep -o 'androidboot.vbmeta.device_state=[^ ]*' /proc/cmdline | cut -d= -f2" "^locked$" "high" "Kernel cmdline shows vbmeta locked"
+
+# Rollback indices (requires avbctl; guarded)
+evaluate_check "AVB" "avbctl Present" "command -v avbctl >/dev/null 2>&1 && echo present || echo absent" "^present$" "info" "avbctl binary available for rollback checks"
+evaluate_check "AVB" "Rollback Index (slot 0) > 0" "command -v avbctl >/dev/null 2>&1 && avbctl get-rollback-index 0 2>/dev/null | awk '{print \$NF}' || echo 0" "^[1-9][0-9]*$" "high" "Anti-rollback index should be > 0 (slot 0)"
+evaluate_check "AVB" "Rollback Index (slot 1) > 0" "command -v avbctl >/dev/null 2>&1 && avbctl get-rollback-index 1 2>/dev/null | awk '{print \$NF}' || echo 0" "^[1-9][0-9]*$" "high" "Anti-rollback index should be > 0 (slot 1)"
+
+# --- DM-VERITY ---
+evaluate_check "DM-VERITY" "Verity Mode (cmdline)" "grep -o 'androidboot.veritymode=[^ ]*' /proc/cmdline | cut -d= -f2" "^enforcing$" "critical" "dm-verity should be enforcing"
+evaluate_check "DM-VERITY" "dm-verity-backed Partitions Mounted" "mount | awk '\$1 ~ /^dm-/ && \$3 ~ /(ext4|f2fs)/ {c++} END{print c+0}'" "^[1-9][0-9]*$" "high" "At least one partition should be backed by dm-verity"
+evaluate_check "DM-VERITY" "AVB/Verity Success in dmesg" "dmesg 2>/dev/null | grep -iE 'avb.*(success|green)|dm-verity:.*(enabled|ready|using)' | wc -l" "^[1-9][0-9]*$" "info" "Kernel logs should show AVB/verity success (if accessible)"
+
+# --- SLOTS & RECOVERY ---
+evaluate_check "SLOTS & RECOVERY" "bootctl Present" "command -v bootctl >/dev/null 2>&1 && echo present || echo absent" "^present$" "info" "bootctl available to query slot state"
+evaluate_check "SLOTS & RECOVERY" "Current Slot" "bootctl get-current-slot 2>/dev/null | sed -E 's/.*: *//'" "^(a|b|0|1)$" "info" "Device reports current boot slot (a/b or 0/1)"
+evaluate_check "SLOTS & RECOVERY" "Stock Recovery (No TWRP in PATH)" "command -v twrp >/dev/null 2>&1 && echo found || echo notfound" "^notfound$" "high" "No custom recovery binary should be present"
+
+# --- POLICY/PERSIST ---
+evaluate_check "POLICY" "Disable-Verity Property Not Set" "getprop persist.sys.disable_verity" "^$|^0$" "critical" "Disable-verity must not be enabled on locked devices"
+
 # ADB SECURITY
 evaluate_check "ADB SECURITY" "ADB Keys Present" "ls /data/misc/adb/adb_keys" "^ls:.*No such file or directory$" "warning" "Presence of adb_keys may indicate previously trusted host"
 evaluate_check "ADB TRUST" "ADB Over Network Port" "getprop service.adb.tcp.port" "^$" "safe" "Should be empty or disabled; non-default = risk"
@@ -407,14 +439,6 @@ evaluate_check "DEBUGGING" "System Debug Binaries" "ls /system/bin/gdbserver /sy
 
 # PROCESS SNAPSHOT
 evaluate_check "PROCESS SNAPSHOT" "Top 5 Running Processes" "ps | head -n 5" ".*" "info" "Initial list of active processes"
-
-
-# ============================================== #
-# VULNERABILITY CHECKS                           #
-# ============================================== #
-
-evaluate_check "PATH ABUSE" "Writable Paths in \$PATH" "echo \$PATH | tr ':' '\n' | xargs -I{} sh -c 'test -w {} && echo {}'" "^$" "critical" "Writable dirs in PATH can lead to privilege escalation"
-
 
 # MALWARE CHECKS
 evaluate_check "MALWARE SCAN" "Suspicious Packages" "pm list packages | grep -Ei 'spy|inject|keylog|steal|remote|sms|trojan'" "^$" "critical" "Flag suspicious package names"
